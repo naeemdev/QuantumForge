@@ -30,7 +30,7 @@ running stack.
 | SourceIngestionTest | 4 | pass |
 | ArchiveIngestorTest | 7 | pass |
 | SmallUnitsTest | 6 | pass |
-| BlobStoreContractTest | 2 | 1 pass, 1 skipped (S3 case needs `QF_TEST_S3_ENDPOINT`; CI runs it against MinIO) |
+| BlobStoreContractTest | 2 | 1 pass, 1 skipped (S3 case needs `QF_TEST_S3_ENDPOINT`; CI runs it against S3Mock) |
 | WorkerUnitTest | 4 | pass |
 | **Total** | **39** | **38 pass, 1 skipped, 0 fail** |
 
@@ -45,7 +45,7 @@ Other checks:
 
 - **Container images and the Compose stack were not built or run.** The build environment has no Docker daemon. The CI workflow builds all three images.
 - **`container` and `container-gvisor` sandboxes were not executed.** They are implemented, but all execution tests used `dev-process`. A Docker-backed CI test is backlog item N1.
-- **The S3 blob store was not exercised.** MinIO could not be downloaded in this environment; the contract test runs in CI.
+- The S3 blob store contract test was later run locally against Adobe S3Mock 4.11.0 and passes; CI runs it on every build.
 - **OIDC sign-in against a real identity provider was not exercised.** The decoder and browser PKCE flow are implemented; tests use the development issuer.
 
 ## Not started (by design, later milestones)

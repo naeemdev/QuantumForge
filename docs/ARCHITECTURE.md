@@ -16,7 +16,7 @@
                  │   ├─ jobs       (queue, leasing, attempts, events, artifacts)     │
                  │   ├─ testing    (test runs and parsed results)                    │
                  │   ├─ audit      (append-only security audit trail)                │
-                 │   └─ storage    (BlobStore: filesystem or S3/MinIO)               │
+                 │   └─ storage    (BlobStore: filesystem or S3-compatible)             │
                  │        │                    │                                     │
                  │   PostgreSQL           object storage                             │
                  └──────────────────────────────┬────────────────────────────────────┘
