@@ -5,6 +5,7 @@ import com.quantumforge.api.audit.AuditService
 import com.quantumforge.api.common.BadRequestException
 import com.quantumforge.api.common.ConflictException
 import com.quantumforge.api.common.Ids
+import com.quantumforge.api.common.Json
 import com.quantumforge.api.common.NotFoundException
 import com.quantumforge.api.common.Page
 import com.quantumforge.api.common.PageRequest
@@ -35,7 +36,11 @@ data class FindingView(
     val severity: String,
     val confidence: String,
     val status: FindingStatus,
-    /** Static analysis findings are suspected issues; see docs/PRODUCT_VISION.md. */
+    val source: FindingSource,
+    /**
+     * SUSPECTED (static analysis pattern), OBSERVED (failure seen while fuzzing but
+     * not every re-run reproduced it) or REPRODUCED (failed again in every fresh re-run).
+     */
     val evidenceLevel: String,
     val message: String,
     val path: String,
@@ -92,7 +97,35 @@ data class RuleView(
     val confidence: String,
 )
 
-data class FindingDetail(val finding: FindingView, val rule: RuleView, val occurrences: List<FindingOccurrenceView>, val history: List<StatusChange>)
+/** A failure a fuzz campaign observed, with the minimal input and a test that replays it. */
+data class ReproductionView(
+    val id: UUID,
+    val findingId: UUID,
+    val jobId: UUID,
+    val snapshotId: UUID,
+    val path: String,
+    val exportName: String,
+    val oracle: String,
+    val message: String,
+    val errorName: String?,
+    val stack: String?,
+    /** Arguments in the campaign's JSON encoding: {"${'$'}qf": "NaN" | "Infinity" | "-Infinity" | "-0" | "undefined"} tags values JSON cannot carry. */
+    val input: Any?,
+    val originalInput: Any?,
+    val shrinkSteps: Int,
+    val attempts: Int,
+    val reproduced: Int,
+    val reproductionTest: String,
+    val createdAt: Instant,
+)
+
+data class FindingDetail(
+    val finding: FindingView,
+    val rule: RuleView,
+    val occurrences: List<FindingOccurrenceView>,
+    val history: List<StatusChange>,
+    val reproductions: List<ReproductionView>,
+)
 
 data class FindingFilter(
     val statuses: List<FindingStatus>,
@@ -100,6 +133,7 @@ data class FindingFilter(
     val ruleId: String?,
     val path: String?,
     val query: String?,
+    val source: FindingSource? = null,
 )
 
 data class FindingCounts(val bySeverity: Map<String, Long>, val byStatus: Map<String, Long>, val byRule: Map<String, Long>)
@@ -118,6 +152,7 @@ class FindingService(private val jdbc: JdbcClient, private val audit: AuditServi
             if (filter.severities.isNotEmpty()) append(" AND f.severity IN (:severities)")
             if (filter.ruleId != null) append(" AND f.rule_id = :rule")
             if (filter.path != null) append(" AND f.path = :path")
+            if (filter.source != null) append(" AND f.source = :source")
             if (like != null) append(" AND (lower(f.message) LIKE :q OR lower(f.path) LIKE :q OR lower(f.snippet) LIKE :q)")
         }
         fun bind(s: JdbcClient.StatementSpec) = s.param("project", projectId).param("tenant", ctx.tenantId).param("org", ctx.organizationId).apply {
@@ -125,6 +160,7 @@ class FindingService(private val jdbc: JdbcClient, private val audit: AuditServi
             if (filter.severities.isNotEmpty()) param("severities", filter.severities)
             if (filter.ruleId != null) param("rule", filter.ruleId)
             if (filter.path != null) param("path", filter.path)
+            if (filter.source != null) param("source", filter.source.name)
             if (like != null) param("q", like)
         }
         val order = "CASE f.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END, f.path, f.start_line"
@@ -163,7 +199,9 @@ class FindingService(private val jdbc: JdbcClient, private val audit: AuditServi
                 StatusChange(rs.getString("from_status"), rs.getString("to_status"), rs.getString("reason"), rs.getString("actor_type"),
                     rs.uuidOrNull("actor_id"), rs.uuidOrNull("job_id"), rs.instant("changed_at"))
             }.list()
-        return FindingDetail(finding, rule, occurrences, history)
+        val reproductions = jdbc.sql("SELECT * FROM defect_reproductions WHERE finding_id = :id AND tenant_id = :tenant ORDER BY created_at DESC LIMIT 20")
+            .param("id", id).param("tenant", ctx.tenantId).query { rs, _ -> mapReproduction(rs) }.list()
+        return FindingDetail(finding, rule, occurrences, history, reproductions)
     }
 
     /**
@@ -216,6 +254,14 @@ class FindingService(private val jdbc: JdbcClient, private val audit: AuditServi
         return Page.of(items, page, total)
     }
 
+    fun reproductionsForJob(ctx: OrgAccess, jobId: UUID): List<ReproductionView> =
+        jdbc.sql(
+            """
+            SELECT r.* FROM defect_reproductions r JOIN findings f ON f.id = r.finding_id AND f.tenant_id = r.tenant_id
+            WHERE r.job_id = :job AND r.tenant_id = :tenant AND f.organization_id = :org ORDER BY r.path, r.export_name, r.created_at
+            """,
+        ).param("job", jobId).param("tenant", ctx.tenantId).param("org", ctx.organizationId).query { rs, _ -> mapReproduction(rs) }.list()
+
     fun occurrencesForFile(ctx: OrgAccess, jobId: UUID, path: String): List<FindingOccurrenceView> =
         jdbc.sql(
             """
@@ -255,7 +301,8 @@ class FindingService(private val jdbc: JdbcClient, private val audit: AuditServi
         severity = rs.getString("severity"),
         confidence = rs.getString("confidence"),
         status = FindingStatus.valueOf(rs.getString("status")),
-        evidenceLevel = "SUSPECTED",
+        source = FindingSource.valueOf(rs.getString("source")),
+        evidenceLevel = rs.getString("evidence_level"),
         message = rs.getString("message"),
         path = rs.getString("path"),
         symbolKey = rs.getString("symbol_key"),
@@ -268,6 +315,26 @@ class FindingService(private val jdbc: JdbcClient, private val audit: AuditServi
         lastSeenSnapshotId = rs.uuid("last_seen_snapshot_id"),
         resolvedAt = rs.instantOrNull("resolved_at"),
         version = rs.getLong("version"),
+    )
+
+    private fun mapReproduction(rs: ResultSet) = ReproductionView(
+        id = rs.uuid("id"),
+        findingId = rs.uuid("finding_id"),
+        jobId = rs.uuid("job_id"),
+        snapshotId = rs.uuid("snapshot_id"),
+        path = rs.getString("path"),
+        exportName = rs.getString("export_name"),
+        oracle = rs.getString("oracle"),
+        message = rs.getString("message"),
+        errorName = rs.getString("error_name"),
+        stack = rs.getString("stack"),
+        input = Json.read<Any>(rs.getString("input")),
+        originalInput = Json.read<Any>(rs.getString("original_input")),
+        shrinkSteps = rs.getInt("shrink_steps"),
+        attempts = rs.getInt("attempts"),
+        reproduced = rs.getInt("reproduced"),
+        reproductionTest = rs.getString("reproduction_test"),
+        createdAt = rs.instant("created_at"),
     )
 
     private fun mapOccurrence(rs: ResultSet, @Suppress("UNUSED_PARAMETER") i: Int) = FindingOccurrenceView(

@@ -28,6 +28,15 @@ data class TestExecutionConfig(
     val memoryMb: Int = 512,
     val cpuMillis: Int = 1000,
     val maxOutputBytes: Long = 1024 * 1024,
+    val fuzz: FuzzSettings? = null,
+)
+
+data class FuzzSettings(
+    val seed: Long = 1,
+    val iterationsPerTarget: Int = 300,
+    val callTimeoutMs: Int = 1000,
+    /** Previously failing inputs; passed to the fuzzer as-is. */
+    val corpus: List<Map<String, Any?>> = emptyList(),
 )
 
 data class HeartbeatResult(val cancelRequested: Boolean, val leaseExpiresAt: Instant)
