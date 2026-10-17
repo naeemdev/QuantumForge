@@ -81,11 +81,21 @@ class JobRunner(
 
         val preset = job.config.preset
         val analysis = job.jobType == "STATIC_ANALYSIS"
-        val supported = (preset == "NODE_TEST" && !analysis) || (preset == "TS_ANALYSIS" && analysis && config.tsAnalyzerDir != null)
+        val fuzz = job.jobType == "FUZZ_CAMPAIGN"
+        val supported = when (job.jobType) {
+            "TEST_EXECUTION" -> preset == "NODE_TEST"
+            "STATIC_ANALYSIS" -> preset == "TS_ANALYSIS" && config.tsAnalyzerDir != null
+            "FUZZ_CAMPAIGN" -> preset == "TS_FUZZ" && config.tsAnalyzerDir != null
+            else -> false
+        }
         if (!supported) {
             return client.complete(job, CompletionReport(AttemptOutcome.INFRA_ERROR, null, null, "Preset $preset is not available on this worker", null))
         }
         val timeout = Duration.ofSeconds(job.timeoutSeconds.toLong())
+        val settings = job.config.fuzz ?: FuzzSettings()
+        if (fuzz) Files.writeString(out.resolve("corpus.json"), json.writeValueAsString(settings.corpus))
+        // Leave room to write the report before the sandbox's hard limit.
+        val fuzzBudgetMs = (job.timeoutSeconds * 1000L * 3 / 4).coerceAtLeast(1000)
         val node = if (sandbox.mode == "dev-process") config.nodeExecutable else "node"
         val spec = ExecutionSpec(
             sourceDir = src,
@@ -94,6 +104,13 @@ class JobRunner(
             command = { p ->
                 if (analysis) {
                     listOf(node, "--experimental-strip-types", "${p.tools.getValue(TS_ANALYZER)}/src/cli.ts", "--root", p.source, "--out", "${p.output}/analysis.json")
+                } else if (fuzz) {
+                    listOf(
+                        node, "--experimental-strip-types", "${p.tools.getValue(TS_ANALYZER)}/src/fuzz/cli.ts",
+                        "--root", p.source, "--out", "${p.output}/fuzz.json", "--corpus", "${p.output}/corpus.json",
+                        "--seed", settings.seed.toString(), "--iterations", settings.iterationsPerTarget.toString(),
+                        "--call-timeout-ms", settings.callTimeoutMs.toString(), "--budget-ms", fuzzBudgetMs.toString(),
+                    )
                 } else {
                     listOf(
                         node,
@@ -114,7 +131,7 @@ class JobRunner(
             memoryMb = job.config.memoryMb,
             cpuMillis = job.config.cpuMillis,
             maxOutputBytes = job.config.maxOutputBytes,
-            tools = if (analysis) mapOf(TS_ANALYZER to config.tsAnalyzerDir!!) else emptyMap(),
+            tools = if (analysis || fuzz) mapOf(TS_ANALYZER to config.tsAnalyzerDir!!) else emptyMap(),
         )
 
         val environment = linkedMapOf<String, Any?>(
@@ -129,7 +146,9 @@ class JobRunner(
                 "maxOutputBytes" to job.config.maxOutputBytes,
             ),
             "snapshot" to mapOf("sha256" to job.snapshotDigest, "files" to prepared, "verified" to true),
-            "testPatterns" to if (analysis) null else job.testPatterns,
+            "testPatterns" to if (analysis || fuzz) null else job.testPatterns,
+            "fuzz" to if (fuzz) mapOf("seed" to settings.seed, "iterationsPerTarget" to settings.iterationsPerTarget,
+                "callTimeoutMs" to settings.callTimeoutMs, "corpusEntries" to settings.corpus.size, "budgetMs" to fuzzBudgetMs) else null,
             "startedAt" to Instant.now().toString(),
         )
         client.start(job, environment)
@@ -156,7 +175,8 @@ class JobRunner(
         Files.writeString(envFile, json.writerWithDefaultPrettyPrinter().writeValueAsString(environment + mapOf("command" to result.command, "exitCode" to result.exitCode, "durationMs" to result.durationMs)))
         client.uploadArtifact(job, "environment.json", "ENVIRONMENT", "application/json", false, envFile)
 
-        if (analysis) return completeAnalysis(job, result, out)
+        if (analysis) return completeReport(job, result, out.resolve("analysis.json"), "ANALYSIS_REPORT", "analyzer")
+        if (fuzz) return completeReport(job, result, out.resolve("fuzz.json"), "FUZZ_REPORT", "fuzzer")
 
         val junit = out.resolve("junit.xml")
         var testRun: TestRunReport? = null
@@ -196,9 +216,11 @@ class JobRunner(
         return client.complete(job, CompletionReport(outcome, result.exitCode, result.durationMs, message, testRun))
     }
 
-    /** An analysis succeeds when the adapter exits cleanly and wrote a report; findings are data, not failures. */
-    private fun completeAnalysis(job: LeasedJob, result: ExecutionResult, out: Path): CompletionResult {
-        val report = out.resolve("analysis.json")
+    /**
+     * An analysis or fuzz campaign succeeds when the tool exits cleanly and wrote a
+     * report; findings and failures it reports are data, not job failures.
+     */
+    private fun completeReport(job: LeasedJob, result: ExecutionResult, report: Path, kind: String, tool: String): CompletionResult {
         val outcome = when {
             result.cancelled -> AttemptOutcome.CANCELLED
             result.timedOut -> AttemptOutcome.TIMED_OUT
@@ -206,16 +228,16 @@ class JobRunner(
             else -> AttemptOutcome.FAILED
         }
         if (outcome == AttemptOutcome.SUCCEEDED) {
-            client.uploadArtifact(job, "analysis.json", "ANALYSIS_REPORT", "application/json", false, report)
+            client.uploadArtifact(job, report.fileName.toString(), kind, "application/json", false, report)
         }
         val message = when (outcome) {
             AttemptOutcome.SUCCEEDED -> null
             AttemptOutcome.TIMED_OUT -> "Exceeded the ${job.timeoutSeconds}s time limit"
             AttemptOutcome.CANCELLED -> "Stopped on cancellation request"
             else -> when {
-                result.exitCode != 0 -> "The analyzer exited with code ${result.exitCode}"
-                !Files.isRegularFile(report) -> "The analyzer produced no report"
-                else -> "The analysis report exceeds $MAX_REPORT_BYTES bytes"
+                result.exitCode != 0 -> "The $tool exited with code ${result.exitCode}"
+                !Files.isRegularFile(report) -> "The $tool produced no report"
+                else -> "The $tool report exceeds $MAX_REPORT_BYTES bytes"
             }
         }
         return client.complete(job, CompletionReport(outcome, result.exitCode, result.durationMs, message, null))

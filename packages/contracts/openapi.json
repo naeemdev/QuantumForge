@@ -243,11 +243,98 @@
         }
       }
     },
+    "/api/v1/projects/{projectId}/fuzz-campaigns" : {
+      "get" : {
+        "tags" : [ "Break My Code" ],
+        "summary" : "Fuzz campaigns of a project, newest first",
+        "operationId" : "list_1",
+        "parameters" : [ {
+          "name" : "projectId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageFuzzCampaignSummary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Break My Code" ],
+        "summary" : "Queue a fuzz campaign against a snapshot (defaults to the latest). Supports Idempotency-Key.",
+        "description" : "The project's open fuzzing findings are replayed first from their stored reproduction inputs, so a campaign on a fixed snapshot resolves them.",
+        "operationId" : "submit",
+        "parameters" : [ {
+          "name" : "projectId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SubmitFuzzCampaignRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Job"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{projectId}/analyses" : {
       "post" : {
         "tags" : [ "Code intelligence" ],
         "summary" : "Queue a static analysis of a snapshot (defaults to the latest). Supports Idempotency-Key.",
-        "operationId" : "submit",
+        "operationId" : "submit_1",
         "parameters" : [ {
           "name" : "projectId",
           "in" : "path",
@@ -1272,6 +1359,14 @@
             "type" : "string"
           }
         }, {
+          "name" : "source",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "STATIC_ANALYSIS", "FUZZING" ]
+          }
+        }, {
           "name" : "page",
           "in" : "query",
           "required" : false,
@@ -1582,7 +1677,7 @@
     "/api/v1/organizations/{organizationId}/audit-events" : {
       "get" : {
         "tags" : [ "Audit" ],
-        "operationId" : "list_1",
+        "operationId" : "list_2",
         "parameters" : [ {
           "name" : "organizationId",
           "in" : "path",
@@ -1716,7 +1811,7 @@
     "/api/v1/jobs" : {
       "get" : {
         "tags" : [ "Jobs" ],
-        "operationId" : "list_2",
+        "operationId" : "list_3",
         "parameters" : [ {
           "name" : "organizationId",
           "in" : "query",
@@ -1750,7 +1845,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS" ]
+            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS", "FUZZ_CAMPAIGN" ]
           }
         }, {
           "name" : "page",
@@ -1987,6 +2082,64 @@
         }
       }
     },
+    "/api/v1/fuzz-campaigns/{id}" : {
+      "get" : {
+        "tags" : [ "Break My Code" ],
+        "summary" : "A fuzz campaign by job id: targets tested and skipped, and every failure with its reproduction",
+        "operationId" : "get_2",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FuzzCampaignDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fuzz-campaigns/{id}/artifacts" : {
+      "get" : {
+        "tags" : [ "Break My Code" ],
+        "operationId" : "artifacts_1",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/JobArtifact"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/findings/{id}" : {
       "get" : {
         "tags" : [ "Code intelligence" ],
@@ -2035,7 +2188,7 @@
     "/api/v1/analyses/{id}" : {
       "get" : {
         "tags" : [ "Code intelligence" ],
-        "operationId" : "get_2",
+        "operationId" : "get_3",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2105,7 +2258,7 @@
     "/api/v1/analyses/{id}/artifacts" : {
       "get" : {
         "tags" : [ "Code intelligence" ],
-        "operationId" : "artifacts_1",
+        "operationId" : "artifacts_2",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2364,7 +2517,7 @@
         "properties" : {
           "preset" : {
             "type" : "string",
-            "enum" : [ "NODE_TEST", "TS_ANALYSIS" ]
+            "enum" : [ "NODE_TEST", "TS_ANALYSIS", "TS_FUZZ" ]
           },
           "testPatterns" : {
             "type" : "array",
@@ -2387,9 +2540,59 @@
           "maxOutputBytes" : {
             "type" : "integer",
             "format" : "int64"
+          },
+          "fuzz" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/FuzzSettings"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
-        "required" : [ "cpuMillis", "maxOutputBytes", "memoryMb", "preset", "testPatterns" ]
+        "required" : [ "cpuMillis", "fuzz", "maxOutputBytes", "memoryMb", "preset", "testPatterns" ]
+      },
+      "FuzzCorpusEntry" : {
+        "type" : "object",
+        "properties" : {
+          "fingerprint" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "exportName" : {
+            "type" : "string"
+          },
+          "input" : {
+            "type" : "array",
+            "items" : { }
+          }
+        },
+        "required" : [ "exportName", "fingerprint", "input", "path" ]
+      },
+      "FuzzSettings" : {
+        "type" : "object",
+        "properties" : {
+          "seed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "iterationsPerTarget" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "callTimeoutMs" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "corpus" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FuzzCorpusEntry"
+            }
+          }
+        },
+        "required" : [ "callTimeoutMs", "corpus", "iterationsPerTarget", "seed" ]
       },
       "SubmitTestRunRequest" : {
         "type" : "object",
@@ -2430,7 +2633,7 @@
           },
           "jobType" : {
             "type" : "string",
-            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS" ]
+            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS", "FUZZ_CAMPAIGN" ]
           },
           "state" : {
             "type" : "string",
@@ -2498,6 +2701,45 @@
           }
         },
         "required" : [ "attemptCount", "cancelRequested", "config", "createdAt", "createdBy", "id", "jobType", "maxAttempts", "organizationId", "priority", "projectId", "queuedAt", "snapshotId", "state", "timeoutSeconds", "updatedAt", "version" ]
+      },
+      "SubmitFuzzCampaignRequest" : {
+        "type" : "object",
+        "properties" : {
+          "snapshotId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "seed" : {
+            "type" : "integer",
+            "format" : "int64",
+            "maximum" : 2147483647,
+            "minimum" : 1
+          },
+          "iterationsPerTarget" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 100000,
+            "minimum" : 1
+          },
+          "callTimeoutMs" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 60000,
+            "minimum" : 50
+          },
+          "timeoutSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "maximum" : 1800,
+            "minimum" : 1
+          },
+          "priority" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 100,
+            "minimum" : -100
+          }
+        }
       },
       "SubmitAnalysisRequest" : {
         "type" : "object",
@@ -2807,9 +3049,15 @@
             "items" : {
               "$ref" : "#/components/schemas/StatusChange"
             }
+          },
+          "reproductions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReproductionView"
+            }
           }
         },
-        "required" : [ "finding", "history", "occurrences", "rule" ]
+        "required" : [ "finding", "history", "occurrences", "reproductions", "rule" ]
       },
       "FindingOccurrenceView" : {
         "type" : "object",
@@ -2906,6 +3154,10 @@
             "type" : "string",
             "enum" : [ "OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED_RISK", "FIXED", "REOPENED" ]
           },
+          "source" : {
+            "type" : "string",
+            "enum" : [ "STATIC_ANALYSIS", "FUZZING" ]
+          },
           "evidenceLevel" : {
             "type" : "string"
           },
@@ -2954,7 +3206,72 @@
             "format" : "int64"
           }
         },
-        "required" : [ "category", "confidence", "endLine", "evidenceLevel", "firstSeenAt", "id", "lastSeenAt", "lastSeenJobId", "lastSeenSnapshotId", "message", "path", "projectId", "ruleId", "ruleName", "ruleVersion", "severity", "snippet", "startLine", "status", "version" ]
+        "required" : [ "category", "confidence", "endLine", "evidenceLevel", "firstSeenAt", "id", "lastSeenAt", "lastSeenJobId", "lastSeenSnapshotId", "message", "path", "projectId", "ruleId", "ruleName", "ruleVersion", "severity", "snippet", "source", "startLine", "status", "version" ]
+      },
+      "ReproductionView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "findingId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "jobId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "snapshotId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "exportName" : {
+            "type" : "string"
+          },
+          "oracle" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "errorName" : {
+            "type" : [ "string", "null" ]
+          },
+          "stack" : {
+            "type" : [ "string", "null" ]
+          },
+          "input" : {
+            "type" : "null"
+          },
+          "originalInput" : {
+            "type" : "null"
+          },
+          "shrinkSteps" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "attempts" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reproduced" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reproductionTest" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "attempts", "createdAt", "exportName", "findingId", "id", "jobId", "message", "oracle", "path", "reproduced", "reproductionTest", "shrinkSteps", "snapshotId" ]
       },
       "RuleView" : {
         "type" : "object",
@@ -3315,6 +3632,128 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/Project"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "items", "page", "size", "total" ]
+      },
+      "FuzzCampaignSummary" : {
+        "type" : "object",
+        "properties" : {
+          "job" : {
+            "$ref" : "#/components/schemas/Job"
+          },
+          "campaign" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/FuzzCampaignView"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "campaign", "job" ]
+      },
+      "FuzzCampaignView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "jobId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "snapshotId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "engineId" : {
+            "type" : "string"
+          },
+          "engineVersion" : {
+            "type" : "string"
+          },
+          "seed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "iterationsPerTarget" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "callTimeoutMs" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "corpusEntries" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "targetsTested" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "targetsSkipped" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalCalls" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "failures" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "durationMs" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "oracles" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "additionalProperties" : { }
+            }
+          },
+          "limitations" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "callTimeoutMs", "corpusEntries", "createdAt", "durationMs", "engineId", "engineVersion", "failures", "id", "iterationsPerTarget", "jobId", "limitations", "oracles", "projectId", "seed", "snapshotId", "targetsSkipped", "targetsTested", "totalCalls" ]
+      },
+      "PageFuzzCampaignSummary" : {
+        "type" : "object",
+        "description" : "A page of results",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FuzzCampaignSummary"
             }
           },
           "page" : {
@@ -4253,6 +4692,85 @@
           }
         },
         "required" : [ "attemptId", "createdAt", "id", "kind", "mediaType", "name", "sha256", "sizeBytes", "truncated" ]
+      },
+      "FuzzCampaignDetail" : {
+        "type" : "object",
+        "properties" : {
+          "job" : {
+            "$ref" : "#/components/schemas/Job"
+          },
+          "attempts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JobAttempt"
+            }
+          },
+          "campaign" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/FuzzCampaignView"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "targets" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FuzzTargetView"
+            }
+          },
+          "reproductions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReproductionView"
+            }
+          }
+        },
+        "required" : [ "attempts", "campaign", "job", "reproductions", "targets" ]
+      },
+      "FuzzTargetView" : {
+        "type" : "object",
+        "properties" : {
+          "path" : {
+            "type" : "string"
+          },
+          "exportName" : {
+            "type" : "string"
+          },
+          "line" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "signature" : {
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "skipReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "iterations" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "replayed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "rejectedInputs" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "failures" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "durationMs" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "durationMs", "exportName", "failures", "iterations", "line", "path", "rejectedInputs", "replayed", "status" ]
       },
       "AuthConfigResponse" : {
         "type" : "object",

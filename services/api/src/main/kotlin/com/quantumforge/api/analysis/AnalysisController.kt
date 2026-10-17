@@ -133,11 +133,12 @@ class AnalysisController(
         @RequestParam(required = false) ruleId: String?,
         @RequestParam(required = false) path: String?,
         @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) source: FindingSource?,
         @RequestParam(required = false) page: Int?,
         @RequestParam(required = false) size: Int?,
     ): Page<FindingView> {
         val ctx = access.requireForProject(id, Permission.PROJECT_READ)
-        return findings.list(ctx, id, FindingFilter(status.orEmpty(), severity.orEmpty(), ruleId, path, q), PageRequest.of(page, size))
+        return findings.list(ctx, id, FindingFilter(status.orEmpty(), severity.orEmpty(), ruleId, path, q, source), PageRequest.of(page, size))
     }
 
     @GetMapping("/projects/{id}/finding-counts")

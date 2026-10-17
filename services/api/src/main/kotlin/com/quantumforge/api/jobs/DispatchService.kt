@@ -18,6 +18,8 @@ import com.quantumforge.api.common.instantOrNull
 import com.quantumforge.api.common.sql
 import com.quantumforge.api.common.uuid
 import com.quantumforge.api.config.QuantumForgeProperties
+import com.quantumforge.api.fuzzing.FuzzIngestion
+import com.quantumforge.api.fuzzing.FuzzSummary
 import com.quantumforge.api.security.WorkerIdentity
 import com.quantumforge.api.storage.BlobKeys
 import com.quantumforge.api.storage.BlobStore
@@ -73,6 +75,7 @@ class DispatchService(
     private val events: JobEventWriter,
     private val tests: TestResultStore,
     private val ingestion: ReportIngestion,
+    private val fuzzIngestion: FuzzIngestion,
     private val blobs: BlobStore,
     private val audit: AuditService,
     private val properties: QuantumForgeProperties,
@@ -212,7 +215,7 @@ class DispatchService(
         content: InputStream,
     ): UUID {
         if (!Regex("^[A-Za-z0-9._-]{1,100}$").matches(name) || name.startsWith(".")) throw BadRequestException("invalid_name", "Invalid artifact name")
-        if (kind !in setOf("STDOUT", "STDERR", "JUNIT_XML", "ENVIRONMENT", "ANALYSIS_REPORT", "OTHER")) throw BadRequestException("invalid_kind", "Invalid artifact kind")
+        if (kind !in setOf("STDOUT", "STDERR", "JUNIT_XML", "ENVIRONMENT", "ANALYSIS_REPORT", "FUZZ_REPORT", "OTHER")) throw BadRequestException("invalid_kind", "Invalid artifact kind")
         if (!Regex("^[a-z]+/[a-z0-9.+-]+$").matches(mediaType)) throw BadRequestException("invalid_media_type", "Invalid media type")
         val ctx = requireLease(worker, attemptId, token, lock = false)
         val existing = jdbc.sql("SELECT id FROM job_artifacts WHERE attempt_id = :a AND name = :n").param("a", attemptId).param("n", name)
@@ -293,6 +296,19 @@ class DispatchService(
                 report = report.copy(outcome = AttemptOutcome.FAILED, errorMessage = "Invalid analysis report: ${e.message}")
             }
         }
+        var fuzzSummary: FuzzSummary? = null
+        if (ctx.jobType == JobType.FUZZ_CAMPAIGN && report.outcome == AttemptOutcome.SUCCEEDED) {
+            try {
+                val fuzzReport = fuzzIngestion.loadReport(attemptId, properties.execution.maxArtifactBytes)
+                fuzzSummary = fuzzIngestion.ingest(
+                    IngestionTarget(ctx.tenantId, ctx.organizationId, ctx.projectId, ctx.snapshotId, ctx.jobId, attemptId),
+                    fuzzReport,
+                )
+            } catch (e: InvalidReportException) {
+                log.warn("Rejected fuzz report for job {}: {}", ctx.jobId, e.message)
+                report = report.copy(outcome = AttemptOutcome.FAILED, errorMessage = "Invalid fuzz report: ${e.message}")
+            }
+        }
 
         jdbc.sql(
             """
@@ -314,6 +330,7 @@ class DispatchService(
             "durationMs" to report.durationMs,
             "tests" to testCounts,
             "analysis" to analysisSummary,
+            "fuzz" to fuzzSummary,
             "worker" to worker.name,
             "isolationMode" to worker.isolationMode,
         )

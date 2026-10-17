@@ -78,7 +78,9 @@ class JobService(
             throw BadRequestException("invalid_preset", "Preset ${config.preset} cannot run a ${command.jobType} job", mapOf("allowed" to command.jobType.presets))
         }
         val timeout = config.timeoutSeconds ?: properties.execution.defaultTimeoutSeconds
-        val requestHash = Hashing.sha256Hex(Json.write(mapOf("type" to command.jobType, "project" to project.id, "snapshot" to snapshot.id, "config" to config, "priority" to command.priority)).toByteArray())
+        // The fuzz corpus is derived server-side from current findings, so it is not part of what the caller asked for.
+        val requested = config.copy(fuzz = config.fuzz?.copy(corpus = emptyList()))
+        val requestHash = Hashing.sha256Hex(Json.write(mapOf("type" to command.jobType, "project" to project.id, "snapshot" to snapshot.id, "config" to requested, "priority" to command.priority)).toByteArray())
 
         val maxActive = jdbc.sql("SELECT max_active_jobs FROM tenants WHERE id = :id FOR UPDATE").param("id", ctx.tenantId).query(Int::class.java).single()
 
