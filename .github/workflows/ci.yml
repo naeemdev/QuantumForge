@@ -25,36 +25,36 @@ jobs:
           POSTGRES_PASSWORD: quantumforge
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U quantumforge"
+          --health-cmd "pg_isready -U quantumforge -d quantumforge_test"
           --health-interval 5s --health-timeout 3s --health-retries 20
+      # S3-compatible test server for the S3 BlobStore contract test.
+      s3:
+        image: adobe/s3mock:4.11.0
+        ports: ["9090:9090"]
     env:
       QF_TEST_DB_URL: jdbc:postgresql://localhost:5432/quantumforge_test
-      QF_TEST_S3_ENDPOINT: http://localhost:9000
+      QF_TEST_S3_ENDPOINT: http://localhost:9090
       QF_TEST_S3_ACCESS_KEY: ci-access-key
-      QF_TEST_S3_SECRET_KEY: ci-secret-key-0123456789
+      QF_TEST_S3_SECRET_KEY: ci-secret-key
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22.22"
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Start MinIO
-        run: |
-          docker run -d --name minio -p 9000:9000 \
-            -e MINIO_ROOT_USER=$QF_TEST_S3_ACCESS_KEY -e MINIO_ROOT_PASSWORD=$QF_TEST_S3_SECRET_KEY \
-            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
-          for i in $(seq 1 30); do curl -fs http://localhost:9000/minio/health/live && break; sleep 1; done
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Wait for the S3 test server
+        run: for i in $(seq 1 60); do curl -s -o /dev/null http://localhost:9090/ && exit 0; sleep 1; done; exit 1
       - name: Test
         run: ./gradlew test --console=plain
       - name: OpenAPI contract is up to date
         run: |
           ./gradlew :services:api:exportOpenApi --console=plain
           git diff --exit-code packages/contracts/openapi.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: test-reports
@@ -64,9 +64,9 @@ jobs:
     name: Web console
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22.22"
           cache: pnpm
@@ -83,8 +83,8 @@ jobs:
     name: Bug corpus
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "22.22"
       - run: scripts/verify-bug-corpus.sh
@@ -93,7 +93,7 @@ jobs:
     name: Container images
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
       - run: docker build -f infrastructure/docker/api.Dockerfile -t quantumforge-api:ci .
       - run: docker build -f infrastructure/docker/worker.Dockerfile -t quantumforge-worker:ci .

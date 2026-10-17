@@ -48,10 +48,10 @@ Stop each process with Ctrl+C. The API shuts down gracefully (in-flight requests
 ```bash
 cp .env.example .env           # then replace every value
 docker compose --profile dev-worker up --build
-# web: http://localhost:3000   api: http://localhost:8080   minio console: http://localhost:9001
+# web: http://localhost:3000   api: http://localhost:8080
 
 docker compose down            # stop, keep data
-docker compose down -v         # stop and delete database and object storage volumes
+docker compose down -v         # stop and delete the database and blob volumes
 ```
 
 Only the public API port is published. The worker port (8081) is reachable only on

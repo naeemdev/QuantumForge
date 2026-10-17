@@ -9,8 +9,8 @@
     "version" : "v1"
   },
   "servers" : [ {
-    "url" : "http://localhost:39679",
-    "description" : "Generated server url"
+    "url" : "/",
+    "description" : "This QuantumForge deployment"
   } ],
   "security" : [ {
     "bearer" : [ ]
