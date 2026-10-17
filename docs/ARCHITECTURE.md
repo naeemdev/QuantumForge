@@ -17,7 +17,7 @@
                  │   ├─ testing    (test runs and parsed results)                    │
                  │   ├─ analysis   (code index, rules, findings and their lifecycle) │
                  │   ├─ audit      (append-only security audit trail)                │
-                 │   └─ storage    (BlobStore: filesystem or S3/MinIO)               │
+                 │   └─ storage    (BlobStore: filesystem or S3-compatible)             │
                  │        │                    │                                     │
                  │   PostgreSQL           object storage                             │
                  └──────────────────────────────┬────────────────────────────────────┘
