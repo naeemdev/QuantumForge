@@ -34,7 +34,7 @@ export const ORACLES: { id: OracleKind; description: string }[] = [
   { id: "runtime-error", description: "The function threw an engine error (for example reading a property of undefined) for inputs that match its declared parameter types." },
   { id: "non-finite-result", description: "The function returned NaN or Infinity (directly or in a field of the result) although every numeric input was finite." },
   { id: "timeout", description: "A single call did not return within the per-call time limit." },
-  { id: "crash", description: "The function terminated its isolate: it ran out of memory or exited the process." },
+  { id: "crash", description: "The call ran out of its heap limit or ended the process that hosted it." },
 ];
 
 export function isEngineError(error: unknown): error is Error {

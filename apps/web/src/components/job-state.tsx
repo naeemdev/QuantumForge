@@ -13,11 +13,12 @@ const presentation: Record<JobState, { tone: Tone; label: string }> = {
 };
 
 /**
- * "Passed" means the configured tests passed on this snapshot — not that the
- * code is defect-free. The job detail page states this next to the result.
+ * For test runs, "Passed" means the configured tests passed on this snapshot,
+ * not that the code is defect-free. Analyses and fuzz campaigns that finish are
+ * "Completed": what they found is reported separately.
  */
-export function JobStateBadge({ state }: { state: JobState }) {
-  const p = presentation[state];
+export function JobStateBadge({ state, jobType }: { state: JobState; jobType?: string }) {
+  const p = state === "SUCCEEDED" && jobType && jobType !== "TEST_EXECUTION" ? { tone: "neutral" as Tone, label: "Completed" } : presentation[state];
   return (
     <Badge tone={p.tone} dot>
       {p.label}

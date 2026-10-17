@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { ShieldCheck } from "lucide-react";
-import { ACTIVE_FINDING_STATUSES, SEVERITIES } from "@quantumforge/contracts";
+import { ACTIVE_FINDING_STATUSES, SEVERITIES, type FindingSource } from "@quantumforge/contracts";
 import { useFindingCounts, useFindings } from "@/lib/queries";
 import { formatRelative } from "@/lib/format";
 import { EvidenceNote, FindingStatusBadge, SeverityBadge } from "@/components/findings";
+import { EvidenceBadge } from "@/components/fuzzing";
 import { ProjectPicker, useSelectedProject } from "@/components/project-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,9 +30,10 @@ function Findings() {
   const [severity, setSeverity] = useState<string[]>([]);
   const [ruleId, setRuleId] = useState("");
   const [q, setQ] = useState("");
+  const [source, setSource] = useState<FindingSource | "">("");
   const [page, setPage] = useState(0);
   const counts = useFindingCounts(projectId);
-  const findings = useFindings(projectId, { status: statusFilters[statusIndex]?.statuses, severity, ruleId, q, page });
+  const findings = useFindings(projectId, { status: statusFilters[statusIndex]?.statuses, severity, ruleId, q, source: source || undefined, page });
 
   const toggleSeverity = (s: string) => {
     setPage(0);
@@ -40,7 +42,7 @@ function Findings() {
 
   return (
     <>
-      <PageHeader title="Findings" description="Issues detected by analyses, tracked across snapshots with their full status history." actions={<ProjectPicker projectId={projectId} projects={projects} />} />
+      <PageHeader title="Findings" description="Issues detected by static analysis and fuzz campaigns, tracked across snapshots with their full status history." actions={<ProjectPicker projectId={projectId} projects={projects} />} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {SEVERITIES.map((s) => (
           <button key={s} onClick={() => toggleSeverity(s)} aria-pressed={severity.includes(s)}
@@ -55,6 +57,11 @@ function Findings() {
           <Select value={statusIndex} onChange={(e) => { setStatusIndex(Number(e.target.value)); setPage(0); }} className="w-36" aria-label="Status">
             {statusFilters.map((f, i) => <option key={f.label} value={i}>{f.label}</option>)}
           </Select>
+          <Select value={source} onChange={(e) => { setSource(e.target.value as FindingSource | ""); setPage(0); }} className="w-40" aria-label="Source">
+            <option value="">All sources</option>
+            <option value="STATIC_ANALYSIS">Static analysis</option>
+            <option value="FUZZING">Fuzzing</option>
+          </Select>
           <Select value={ruleId} onChange={(e) => { setRuleId(e.target.value); setPage(0); }} className="w-56" aria-label="Rule">
             <option value="">All rules</option>
             {Object.keys(counts.data?.byRule ?? {}).sort().map((r) => <option key={r} value={r}>{r}</option>)}
@@ -64,11 +71,11 @@ function Findings() {
         {!projectId ? <EmptyState title="No projects" /> : findings.isPending ? <Spinner /> : findings.isError ? (
           <div className="p-4"><ErrorState error={findings.error} /></div>
         ) : findings.data.items.length === 0 ? (
-          <EmptyState icon={<ShieldCheck className="size-5" />} title="No findings match" description="Analyse a snapshot from Code Intelligence, or change the filters." />
+          <EmptyState icon={<ShieldCheck className="size-5" />} title="No findings match" description="Analyse a snapshot from Code Intelligence, run a campaign from Break My Code, or change the filters." />
         ) : (
           <>
             <Table>
-              <thead><tr><Th>Severity</Th><Th>Finding</Th><Th>Location</Th><Th>Status</Th><Th className="text-right">Last seen</Th></tr></thead>
+              <thead><tr><Th>Severity</Th><Th>Finding</Th><Th>Location</Th><Th>Evidence</Th><Th>Status</Th><Th className="text-right">Last seen</Th></tr></thead>
               <tbody>
                 {findings.data.items.map((f) => (
                   <Tr key={f.id}>
@@ -78,6 +85,7 @@ function Findings() {
                       <p className="text-xs text-fg-3"><span className="font-mono">{f.ruleId}</span> · {f.ruleName} · {f.confidence} confidence</p>
                     </Td>
                     <Td className="font-mono text-xs">{f.path}:{f.startLine}</Td>
+                    <Td><EvidenceBadge level={f.evidenceLevel} source={f.source} /></Td>
                     <Td><FindingStatusBadge status={f.status} /></Td>
                     <Td className="text-right text-xs">{formatRelative(f.lastSeenAt)}</Td>
                   </Tr>

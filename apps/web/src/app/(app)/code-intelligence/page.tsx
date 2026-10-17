@@ -198,7 +198,7 @@ function HistoryTab({ projectId }: { projectId: string }) {
           return (
             <Tr key={j.id}>
               <Td><Link href={`/test-runs/${j.id}`} className="font-mono text-xs text-fg hover:underline">{j.id.slice(-8)}</Link></Td>
-              <Td><JobStateBadge state={j.state} /></Td>
+              <Td><JobStateBadge state={j.state} jobType={j.jobType} /></Td>
               <Td className="text-xs">{a ? <>{a.findings} detected · {a.newFindings} new · {a.fixed} fixed</> : "—"}</Td>
               <Td className="tabular text-right text-xs">{formatDuration(j.resultSummary?.durationMs as number | undefined)}</Td>
               <Td className="text-right text-xs">{formatRelative(j.queuedAt)}</Td>

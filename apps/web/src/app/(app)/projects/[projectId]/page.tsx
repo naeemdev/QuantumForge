@@ -385,7 +385,7 @@ export default function ProjectPage() {
                   {jobs.data.items.slice(0, 10).map((j) => (
                     <Tr key={j.id}>
                       <Td><Link href={`/test-runs/${j.id}`} className="font-mono text-xs text-fg hover:underline">{j.id.slice(-8)}</Link></Td>
-                      <Td><JobStateBadge state={j.state} /></Td>
+                      <Td><JobStateBadge state={j.state} jobType={j.jobType} /></Td>
                       <Td><TestCounts tests={j.resultSummary?.tests as Record<string, unknown> | undefined} /></Td>
                       <Td className="tabular text-right text-xs">{formatDuration(j.resultSummary?.durationMs as number | undefined)}</Td>
                       <Td className="text-right text-xs">{formatRelative(j.queuedAt)}</Td>

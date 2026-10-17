@@ -39,7 +39,7 @@ export const LIMITATIONS = [
   "Only exported functions whose parameters are numbers, strings, booleans, literals, null/undefined, arrays, tuples, unions or plain object shapes are fuzzed. Classes, callbacks, generics and built-in types are skipped and listed with the reason.",
   "Inputs are generated from declared TypeScript types only. A function whose real precondition is narrower than its type (for example a quantity that must be positive) can be reported for inputs its callers never pass.",
   "The oracles are generic: engine errors, NaN/Infinity results, hangs and crashes. Wrong-but-plausible results, such as incorrect rounding, are not detected without a specification.",
-  "Module state persists across calls within a target, so a failure may depend on earlier calls. Each failure is re-run in fresh threads and the reproduction count is reported.",
+  "Module state persists across calls within a target, so a failure may depend on earlier calls. Each failure is re-run in fresh processes and the reproduction count is reported.",
   "Absence of failures is not evidence of correctness: it means these oracles found nothing in the inputs that were tried.",
 ];
 
@@ -140,7 +140,7 @@ export async function runCampaign(rootDir: string, options: CampaignOptions = DE
         }
       }
 
-      // Reproduce in fresh threads, so module state from the campaign cannot be the cause.
+      // Reproduce in fresh processes, so module state from the campaign cannot be the cause.
       let reproduced = 0;
       for (let attempt = 0; attempt < options.reproductionAttempts; attempt++) {
         const fresh = new TargetSession(modulePath, target.exportName);

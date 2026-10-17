@@ -34,6 +34,7 @@ data class RecentJob(
     val id: UUID,
     val projectId: UUID,
     val projectName: String,
+    val jobType: String,
     val state: String,
     val createdAt: Instant,
     val finishedAt: Instant?,
@@ -76,12 +77,12 @@ class OverviewController(private val access: AccessService, private val jdbc: Jd
             .query { rs, _ -> TestTotals(rs.getLong("runs"), rs.getLong("passed"), rs.getLong("failed"), rs.getLong("skipped"), rs.getLong("errored")) }.single()
         val recent = jdbc.sql(
             """
-            SELECT j.id, j.project_id, p.name, j.state, j.created_at, j.finished_at, j.result_summary
+            SELECT j.id, j.project_id, p.name, j.job_type, j.state, j.created_at, j.finished_at, j.result_summary
             FROM analysis_jobs j JOIN projects p ON p.id = j.project_id AND p.tenant_id = j.tenant_id
             WHERE j.tenant_id = :tenant AND j.organization_id = :org ORDER BY j.created_at DESC LIMIT 10
             """,
         ).param("tenant", ctx.tenantId).param("org", organizationId).query { rs, _ ->
-            RecentJob(rs.uuid("id"), rs.uuid("project_id"), rs.getString("name"), rs.getString("state"), rs.instant("created_at"),
+            RecentJob(rs.uuid("id"), rs.uuid("project_id"), rs.getString("name"), rs.getString("job_type"), rs.getString("state"), rs.instant("created_at"),
                 rs.instantOrNull("finished_at"), rs.getString("result_summary")?.let { Json.readMap(it) })
         }.list()
         val activity = jdbc.sql(

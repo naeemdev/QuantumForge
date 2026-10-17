@@ -20,6 +20,16 @@ function humanAction(action: string) {
   return action.replace(/[._]/g, " ");
 }
 
+const jobTypeLabel: Record<string, string> = { TEST_EXECUTION: "Test run", STATIC_ANALYSIS: "Static analysis", FUZZ_CAMPAIGN: "Fuzz campaign" };
+
+function JobResult({ type, summary }: { type: string; summary: Record<string, unknown> | null | undefined }) {
+  const part = (summary?.[type === "FUZZ_CAMPAIGN" ? "fuzz" : "analysis"] ?? null) as Record<string, number> | null;
+  if (!part) return <span className="text-xs text-fg-3">—</span>;
+  return type === "FUZZ_CAMPAIGN"
+    ? <span className="tabular text-xs">{part.failures ?? 0} failures in {part.targetsTested ?? 0} functions</span>
+    : <span className="tabular text-xs">{part.findings ?? 0} findings · {part.newFindings ?? 0} new</span>;
+}
+
 export default function OverviewPage() {
   const { organization } = useSession();
   const overview = useOverview();
@@ -60,7 +70,7 @@ export default function OverviewPage() {
                 <tr>
                   <Th>Project</Th>
                   <Th>Status</Th>
-                  <Th>Tests</Th>
+                  <Th>Result</Th>
                   <Th className="text-right">Started</Th>
                 </tr>
               </thead>
@@ -68,12 +78,13 @@ export default function OverviewPage() {
                 {o.recentJobs.map((j) => (
                   <Tr key={j.id}>
                     <Td>
-                      <Link href={`/test-runs/${j.id}`} className="font-medium text-fg hover:underline">
+                      <Link href={j.jobType === "FUZZ_CAMPAIGN" ? `/break-my-code/${j.id}` : `/test-runs/${j.id}`} className="font-medium text-fg hover:underline">
                         {j.projectName}
                       </Link>
+                      <p className="text-xs text-fg-3">{jobTypeLabel[j.jobType] ?? j.jobType}</p>
                     </Td>
-                    <Td><JobStateBadge state={j.state as JobState} /></Td>
-                    <Td><TestCounts tests={j.summary?.tests as Record<string, unknown> | undefined} /></Td>
+                    <Td><JobStateBadge state={j.state as JobState} jobType={j.jobType} /></Td>
+                    <Td>{j.jobType === "TEST_EXECUTION" ? <TestCounts tests={j.summary?.tests as Record<string, unknown> | undefined} /> : <JobResult type={j.jobType} summary={j.summary} />}</Td>
                     <Td className="text-right text-xs">{formatRelative(j.createdAt)}</Td>
                   </Tr>
                 ))}
