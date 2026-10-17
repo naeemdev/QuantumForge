@@ -14,7 +14,7 @@ import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 
-/** S3-compatible store (AWS S3, MinIO, Ceph RGW, ...). */
+/** S3-compatible store (AWS S3, Ceph RGW, SeaweedFS, Garage, ...). */
 class S3BlobStore(private val client: S3Client, private val bucket: String) : BlobStore {
     override fun put(key: String, source: Path, contentType: String): StoredBlob {
         val sha256 = Files.newInputStream(source).use { Hashing.toHex(digest(it)) }

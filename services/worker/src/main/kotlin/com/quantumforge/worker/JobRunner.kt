@@ -80,22 +80,29 @@ class JobRunner(
         }
 
         val preset = job.config.preset
-        if (preset != "NODE_TEST") {
-            return client.complete(job, CompletionReport(AttemptOutcome.INFRA_ERROR, null, null, "Preset $preset is not supported by this worker", null))
+        val analysis = job.jobType == "STATIC_ANALYSIS"
+        val supported = (preset == "NODE_TEST" && !analysis) || (preset == "TS_ANALYSIS" && analysis && config.tsAnalyzerDir != null)
+        if (!supported) {
+            return client.complete(job, CompletionReport(AttemptOutcome.INFRA_ERROR, null, null, "Preset $preset is not available on this worker", null))
         }
         val timeout = Duration.ofSeconds(job.timeoutSeconds.toLong())
+        val node = if (sandbox.mode == "dev-process") config.nodeExecutable else "node"
         val spec = ExecutionSpec(
             sourceDir = src,
             outputDir = out,
             logDir = logs,
             command = { p ->
-                listOf(
-                    if (sandbox.mode == "dev-process") config.nodeExecutable else "node",
-                    "--experimental-strip-types",
-                    "--test",
-                    "--test-reporter=spec", "--test-reporter-destination=stdout",
-                    "--test-reporter=junit", "--test-reporter-destination=${p.output}/junit.xml",
-                ) + job.testPatterns
+                if (analysis) {
+                    listOf(node, "--experimental-strip-types", "${p.tools.getValue(TS_ANALYZER)}/src/cli.ts", "--root", p.source, "--out", "${p.output}/analysis.json")
+                } else {
+                    listOf(
+                        node,
+                        "--experimental-strip-types",
+                        "--test",
+                        "--test-reporter=spec", "--test-reporter-destination=stdout",
+                        "--test-reporter=junit", "--test-reporter-destination=${p.output}/junit.xml",
+                    ) + job.testPatterns
+                }
             },
             environment = mapOf(
                 "CI" to "true",
@@ -107,12 +114,13 @@ class JobRunner(
             memoryMb = job.config.memoryMb,
             cpuMillis = job.config.cpuMillis,
             maxOutputBytes = job.config.maxOutputBytes,
+            tools = if (analysis) mapOf(TS_ANALYZER to config.tsAnalyzerDir!!) else emptyMap(),
         )
 
         val environment = linkedMapOf<String, Any?>(
             "worker" to toolVersions["workerVersion"],
             "isolation" to sandbox.describe(),
-            "runtime" to mapOf("node" to toolVersions["node"], "preset" to preset),
+            "runtime" to mapOf("node" to toolVersions["node"], "preset" to preset, "jobType" to job.jobType),
             "os" to "${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})",
             "limits" to mapOf(
                 "timeoutSeconds" to job.timeoutSeconds,
@@ -121,7 +129,7 @@ class JobRunner(
                 "maxOutputBytes" to job.config.maxOutputBytes,
             ),
             "snapshot" to mapOf("sha256" to job.snapshotDigest, "files" to prepared, "verified" to true),
-            "testPatterns" to job.testPatterns,
+            "testPatterns" to if (analysis) null else job.testPatterns,
             "startedAt" to Instant.now().toString(),
         )
         client.start(job, environment)
@@ -142,6 +150,8 @@ class JobRunner(
         val envFile = logs.resolve("environment.json")
         Files.writeString(envFile, json.writerWithDefaultPrettyPrinter().writeValueAsString(environment + mapOf("command" to result.command, "exitCode" to result.exitCode, "durationMs" to result.durationMs)))
         client.uploadArtifact(job, "environment.json", "ENVIRONMENT", "application/json", false, envFile)
+
+        if (analysis) return completeAnalysis(job, result, out)
 
         val junit = out.resolve("junit.xml")
         var testRun: TestRunReport? = null
@@ -181,7 +191,34 @@ class JobRunner(
         return client.complete(job, CompletionReport(outcome, result.exitCode, result.durationMs, message, testRun))
     }
 
+    /** An analysis succeeds when the adapter exits cleanly and wrote a report; findings are data, not failures. */
+    private fun completeAnalysis(job: LeasedJob, result: ExecutionResult, out: Path): CompletionResult {
+        val report = out.resolve("analysis.json")
+        val outcome = when {
+            result.cancelled -> AttemptOutcome.CANCELLED
+            result.timedOut -> AttemptOutcome.TIMED_OUT
+            result.exitCode == 0 && Files.isRegularFile(report) && Files.size(report) <= MAX_REPORT_BYTES -> AttemptOutcome.SUCCEEDED
+            else -> AttemptOutcome.FAILED
+        }
+        if (outcome == AttemptOutcome.SUCCEEDED) {
+            client.uploadArtifact(job, "analysis.json", "ANALYSIS_REPORT", "application/json", false, report)
+        }
+        val message = when (outcome) {
+            AttemptOutcome.SUCCEEDED -> null
+            AttemptOutcome.TIMED_OUT -> "Exceeded the ${job.timeoutSeconds}s time limit"
+            AttemptOutcome.CANCELLED -> "Stopped on cancellation request"
+            else -> when {
+                result.exitCode != 0 -> "The analyzer exited with code ${result.exitCode}"
+                !Files.isRegularFile(report) -> "The analyzer produced no report"
+                else -> "The analysis report exceeds $MAX_REPORT_BYTES bytes"
+            }
+        }
+        return client.complete(job, CompletionReport(outcome, result.exitCode, result.durationMs, message, null))
+    }
+
     companion object {
         const val MAX_JUNIT_BYTES = 4L * 1024 * 1024
+        const val MAX_REPORT_BYTES = 32L * 1024 * 1024
+        const val TS_ANALYZER = "ts-analyzer"
     }
 }

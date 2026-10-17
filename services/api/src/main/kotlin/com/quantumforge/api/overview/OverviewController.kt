@@ -22,6 +22,8 @@ data class OrganizationOverview(
     val activeJobs: Long,
     val activeJobLimit: Int,
     val testTotals: TestTotals,
+    /** Active (open, confirmed, reopened) findings by severity. Static findings are suspected issues. */
+    val openFindings: Map<String, Long>,
     val recentJobs: List<RecentJob>,
     val recentActivity: List<ActivityItem>,
 )
@@ -87,6 +89,10 @@ class OverviewController(private val access: AccessService, private val jdbc: Jd
         ).param("tenant", ctx.tenantId).param("org", organizationId).query { rs, _ ->
             ActivityItem(rs.getString("action"), rs.getString("outcome"), rs.getString("actor_type"), rs.getString("target_type"), rs.instant("occurred_at"))
         }.list()
-        return OrganizationOverview(projects, snapshots, byState, active, limit, totals, recent, activity)
+        val openFindings = jdbc.sql(
+            "SELECT severity, count(*) AS n FROM findings WHERE tenant_id = :tenant AND organization_id = :org AND status IN ('OPEN','CONFIRMED','REOPENED') GROUP BY severity",
+        ).param("tenant", ctx.tenantId).param("org", organizationId)
+            .query { rs, _ -> rs.getString("severity") to rs.getLong("n") }.list().toMap()
+        return OrganizationOverview(projects, snapshots, byState, active, limit, totals, openFindings, recent, activity)
     }
 }

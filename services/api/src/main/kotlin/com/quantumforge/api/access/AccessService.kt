@@ -105,6 +105,16 @@ class AccessService(private val jdbc: JdbcClient, private val audit: AuditServic
     fun requireForSnapshot(snapshotId: UUID, permission: Permission) =
         requireOwned("snapshot", snapshotId, permission) { organizationOfSnapshot(it) }
 
+    fun organizationOfFinding(findingId: UUID): UUID =
+        jdbc.sql("SELECT organization_id FROM findings WHERE id = :id").param("id", findingId)
+            .query(UUID::class.java).optional().orElseThrow { NotFoundException("finding", findingId) }
+
+    /** Requires a permission in the organization that owns a resource; non-members see the resource as missing. */
+    fun requireOwned(resource: String, id: UUID, organizationId: UUID, permission: Permission): OrgAccess {
+        resolve(organizationId) ?: throw NotFoundException(resource, id)
+        return require(organizationId, permission)
+    }
+
     private fun requireOwned(resource: String, id: UUID, permission: Permission, owner: (UUID) -> UUID): OrgAccess {
         val orgId = owner(id)
         // Not a member of the owning org: report the resource itself as missing.

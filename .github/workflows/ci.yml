@@ -38,9 +38,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22.22"
+          cache: pnpm
+      # The integration tests run the TypeScript adapter, which needs its dependencies.
+      - run: pnpm install --frozen-lockfile --filter @quantumforge/lang-typescript...
       - uses: gradle/actions/setup-gradle@v4
       - name: Start MinIO
         run: |
@@ -76,6 +80,7 @@ jobs:
           pnpm contracts:generate
           git diff --exit-code packages/contracts/src/schema.ts
       - run: pnpm typecheck
+      - run: pnpm --filter @quantumforge/lang-typescript test
       - run: pnpm lint
       - run: pnpm web:build
 

@@ -45,3 +45,19 @@ export interface ApiErrorBody {
     fieldErrors: { field: string; message: string }[];
   };
 }
+
+export type CodeIndexView = Schemas["CodeIndexView"];
+export type CodeSymbolView = Schemas["CodeSymbolView"];
+export type DependencyGraph = Schemas["DependencyGraph"];
+export type CallEdgeView = Schemas["CallEdgeView"];
+export type FileAnnotations = Schemas["FileAnnotations"];
+export type AnalysisDetail = Schemas["AnalysisDetail"];
+export type FindingView = Schemas["FindingView"];
+export type FindingDetail = Schemas["FindingDetail"];
+export type FindingOccurrenceView = Schemas["FindingOccurrenceView"];
+export type FindingStatus = FindingView["status"];
+export type FindingCounts = Schemas["FindingCounts"];
+export type RuleView = Schemas["RuleView"];
+
+export const ACTIVE_FINDING_STATUSES: readonly FindingStatus[] = ["OPEN", "CONFIRMED", "REOPENED"];
+export const SEVERITIES = ["critical", "high", "medium", "low", "info"] as const;

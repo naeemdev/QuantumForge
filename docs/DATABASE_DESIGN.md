@@ -46,20 +46,30 @@ The migrations are the source of truth; this document explains the reasoning.
 - **job_artifacts** — evidence metadata; `(attempt_id, name)` unique so retried uploads are idempotent.
 - **test_runs / test_results** — parsed results per attempt. `total = passed + failed + skipped + errored` is enforced by a check constraint.
 
+### Code intelligence (V4)
+
+- **rules / rule_versions** — catalogue registered from adapter reports; every version that produced a finding is kept, with its severity, confidence and text.
+- **code_indexes** — one per successful analysis job: adapter, version, toolchain, declared capabilities, limitations and stats.
+- **code_files / code_symbols / code_imports / code_calls** — the index itself, scoped by `index_id` and tenant.
+- **findings** — one row per issue per project, unique on `(project_id, fingerprint)`. Tracks first/last seen job and snapshot, status, and the snapshot that resolved it (`resolved_snapshot_id`), so older snapshots cannot reopen newer fixes.
+- **finding_occurrences** — immutable evidence: one row per finding per analysis, with exact location, snippet and rule version.
+- **finding_status_history** — every transition with actor (user, API token or system), reason and the analysis that caused it.
+- New permission `finding.triage` (owner, admin, member).
+
 ## Transaction boundaries
 
 - Ingestion validates and uploads blobs **outside** any transaction; only the final metadata insert is transactional, and it uses `ON CONFLICT DO NOTHING` so concurrent identical imports converge on one snapshot.
 - Job admission locks the tenant row (`SELECT … FOR UPDATE`) so concurrent submissions cannot exceed `max_active_jobs`.
 - Dispatch uses `FOR UPDATE SKIP LOCKED` so several API instances can lease concurrently without blocking each other.
 - Worker reports lock the job row (`FOR UPDATE OF j`) to serialise with cancellation and the lease reaper.
+- Analysis ingestion runs inside the job-completion transaction: a job is `SUCCEEDED` exactly when its index and finding updates are stored.
 - Successful audit events commit with the change they describe; DENIED events use a separate transaction because the request's own transaction rolls back.
 
 ## Planned tables
 
 Added when their modules are built, not before: `teams`, `team_members`,
-`repository_credentials` (M2, encrypted), `symbols`, `dependencies`,
-`analysis_runs`, `rules`, `rule_versions`, `findings`, `finding_occurrences`,
-`finding_status_history`, `finding_evidence` (M2); `fuzz_campaigns`,
+`repository_credentials` (encrypted), `finding_evidence` (M3, reproduction
+artifacts); `fuzz_campaigns`,
 `fuzz_inputs`, `mutation_runs`, `mutation_results`, `defect_reproductions` (M3);
 `repair_proposals`, `repair_verification_runs` (M4); `subscription_plans`,
 `subscriptions`, `usage_events`, `usage_aggregates`, `quota_policies` (M7).
