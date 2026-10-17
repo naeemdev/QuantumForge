@@ -6,6 +6,7 @@ import io.swagger.v3.oas.models.info.Info
 import io.swagger.v3.oas.models.info.License
 import io.swagger.v3.oas.models.security.SecurityRequirement
 import io.swagger.v3.oas.models.security.SecurityScheme
+import org.springdoc.core.customizers.OpenApiCustomizer
 import org.springdoc.core.models.GroupedOpenApi
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -28,5 +29,24 @@ class CoreConfig {
 
     /** Only the public API is documented; internal worker routes stay out of the contract. */
     @Bean
-    fun publicApiGroup(): GroupedOpenApi = GroupedOpenApi.builder().group("public").pathsToMatch("/api/v1/**", "/health/**").build()
+    fun publicApiGroup(): GroupedOpenApi = GroupedOpenApi.builder()
+        .group("public")
+        .pathsToMatch("/api/v1/**", "/health/**")
+        .addOpenApiCustomizer(requiredResponseFields())
+        .build()
+
+    /**
+     * Responses always serialise every property, so a property whose schema does
+     * not allow null is present in every response: mark it required. Request
+     * schemas are left alone because Kotlin defaults make their fields optional.
+     */
+    private fun requiredResponseFields() = OpenApiCustomizer { api ->
+        api.components?.schemas?.forEach { (name, schema) ->
+            if (name.endsWith("Request")) return@forEach
+            val required = schema.properties.orEmpty()
+                .filter { (_, property) -> property.types?.contains("null") != true && property.nullable != true }
+                .keys.sorted()
+            if (required.isNotEmpty()) schema.required = required
+        }
+    }
 }
