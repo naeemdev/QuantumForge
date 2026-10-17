@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. Neutral surfaces, a single restrained accent, and status
+ * colours reserved for meaning (pass, fail, warning). Components reference the
+ * semantic names only, so both themes stay consistent.
+ */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f6;
+  --surface-hover: #eceff3;
+  --border: #e2e5ea;
+  --border-strong: #cfd4dc;
+  --text: #14171c;
+  --text-2: #4f5663;
+  --text-3: #858b96;
+  --accent: #2552b8;
+  --accent-hover: #1f469e;
+  --accent-soft: #e8eefb;
+  --accent-fg: #ffffff;
+  --success: #16794c;
+  --success-soft: #e5f4ec;
+  --danger: #b4302f;
+  --danger-soft: #fbeaea;
+  --warning: #9a6200;
+  --warning-soft: #fbf1df;
+  --info: #2552b8;
+  --info-soft: #e8eefb;
+  --focus: #2552b8;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0d0f12;
+  --surface: #14171b;
+  --surface-2: #1a1d22;
+  --surface-hover: #20242a;
+  --border: #252a31;
+  --border-strong: #343a43;
+  --text: #e5e7eb;
+  --text-2: #a2a8b3;
+  --text-3: #6d7380;
+  --accent: #5f8cf0;
+  --accent-hover: #7a9ff3;
+  --accent-soft: #1a2640;
+  --accent-fg: #0d0f12;
+  --success: #3dbb7f;
+  --success-soft: #11291e;
+  --danger: #ec6a69;
+  --danger-soft: #331617;
+  --warning: #e0a444;
+  --warning-soft: #2e2311;
+  --info: #5f8cf0;
+  --info-soft: #1a2640;
+  --focus: #7a9ff3;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-fg-2: var(--text-2);
+  --color-fg-3: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
