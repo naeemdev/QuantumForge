@@ -62,12 +62,22 @@ export interface FailureReport {
   fingerprint: string;
 }
 
+/** A previously failing input, replayed before random generation. */
+export interface CorpusEntry {
+  path: string;
+  exportName: string;
+  /** Encoded arguments (see codec.ts). */
+  input: unknown[];
+}
+
 export interface TargetReport {
   path: string;
   exportName: string;
   signature: string;
   line: number;
   iterations: number;
+  /** Corpus inputs replayed for this target before generating new ones. */
+  replayed: number;
   rejectedInputs: number;
   durationMs: number;
   failures: FailureReport[];
@@ -76,7 +86,7 @@ export interface TargetReport {
 export interface CampaignReport {
   schemaVersion: 1;
   engine: { id: string; version: string; oracles: { id: OracleKind; description: string }[]; limitations: string[] };
-  config: { seed: number; iterationsPerTarget: number; callTimeoutMs: number };
+  config: { seed: number; iterationsPerTarget: number; callTimeoutMs: number; corpusEntries: number };
   targets: TargetReport[];
   skipped: SkippedTarget[];
   stats: { targetsFound: number; targetsTested: number; totalCalls: number; failures: number; durationMs: number };
