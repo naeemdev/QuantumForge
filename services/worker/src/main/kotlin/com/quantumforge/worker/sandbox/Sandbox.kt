@@ -29,6 +29,8 @@ data class ExecutionResult(
     val stdout: CapturedOutput,
     val stderr: CapturedOutput,
     val command: List<String>,
+    /** Set when the sandbox itself failed (e.g. the container runtime could not start the job); not a test failure. */
+    val sandboxError: String? = null,
 )
 
 /**

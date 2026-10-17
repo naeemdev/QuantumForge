@@ -9,7 +9,8 @@ const securityHeaders = [
 ];
 
 const config: NextConfig = {
-  output: "standalone",
+  // Standalone output is for the container image (see web.Dockerfile); `next start` serves the normal build.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   reactStrictMode: true,
   poweredByHeader: false,
   transpilePackages: ["@quantumforge/contracts"],

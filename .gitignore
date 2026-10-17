@@ -12,6 +12,10 @@ apps/web/out/
 *.tsbuildinfo
 next-env.d.ts
 
+# Browser test output
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+
 # Local data and secrets
 data/
 .env

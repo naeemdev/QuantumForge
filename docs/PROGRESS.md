@@ -39,7 +39,10 @@ other code (backlog N13).
 
 There is no Docker daemon here, so the following run only in CI:
 - the container images, including the analyzer stage in the worker image
-- the `container` / `container-gvisor` sandboxes, which are implemented but have not been executed (backlog N1)
+- the container sandbox tests (`ContainerSandboxTest`, `ContainerExecutionTest`); `container-gvisor` is not tested anywhere yet because CI runners do not have runsc
+
+Browser end-to-end tests (`tests/e2e`, 2 specs) pass locally against the full stack
+started by `scripts/e2e-stack.sh` and run in CI as their own job.
 
 The S3 blob store contract test runs locally against Adobe S3Mock 4.11.0 and in CI
 as a service container. OIDC sign-in against a real identity provider has not been
