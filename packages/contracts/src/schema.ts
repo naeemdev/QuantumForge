@@ -69,6 +69,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/analyses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue a static analysis of a snapshot (defaults to the latest). Supports Idempotency-Key. */
+        post: operations["submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{id}/repositories": {
         parameters: {
             query?: never;
@@ -159,6 +176,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["changeStatus"];
         delete?: never;
         options?: never;
         head?: never;
@@ -326,6 +359,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["rules"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/roles": {
         parameters: {
             query?: never;
@@ -358,6 +407,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{id}/symbols": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["symbols"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{id}/revisions": {
         parameters: {
             query?: never;
@@ -374,6 +439,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{id}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["projectFindings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{id}/finding-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["projectFindingCounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{id}/files": {
         parameters: {
             query?: never;
@@ -382,6 +479,70 @@ export interface paths {
             cookie?: never;
         };
         get: operations["projectFiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{id}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["dependencies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{id}/code-index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{id}/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["calls"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{id}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["annotations"];
         put?: never;
         post?: never;
         delete?: never;
@@ -582,6 +743,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/findings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["finding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/config": {
         parameters: {
             query?: never;
@@ -590,6 +767,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["authConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{id}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["analysisFindings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{id}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["artifacts_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -698,16 +923,9 @@ export interface components {
             /** Format: int64 */
             version: number;
         };
-        SubmitTestRunRequest: {
-            /** Format: uuid */
-            snapshotId?: string | null;
-            config?: components["schemas"]["TestExecutionConfig"];
-            /** Format: int32 */
-            priority?: number;
-        };
-        TestExecutionConfig: {
+        ExecutionConfig: {
             /** @enum {string} */
-            preset: "NODE_TEST";
+            preset: "NODE_TEST" | "TS_ANALYSIS";
             testPatterns: string[];
             /** Format: int32 */
             timeoutSeconds?: number | null;
@@ -717,6 +935,13 @@ export interface components {
             cpuMillis: number;
             /** Format: int64 */
             maxOutputBytes: number;
+        };
+        SubmitTestRunRequest: {
+            /** Format: uuid */
+            snapshotId?: string | null;
+            config?: components["schemas"]["ExecutionConfig"];
+            /** Format: int32 */
+            priority?: number;
         };
         Job: {
             /** Format: uuid */
@@ -728,12 +953,12 @@ export interface components {
             /** Format: uuid */
             snapshotId: string;
             /** @enum {string} */
-            jobType: "TEST_EXECUTION";
+            jobType: "TEST_EXECUTION" | "STATIC_ANALYSIS";
             /** @enum {string} */
             state: "QUEUED" | "LEASED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "TIMED_OUT" | "CANCELLED" | "INFRA_ERROR";
             /** Format: int32 */
             priority: number;
-            config: components["schemas"]["TestExecutionConfig"];
+            config: components["schemas"]["ExecutionConfig"];
             idempotencyKey?: string | null;
             /** Format: int32 */
             maxAttempts: number;
@@ -760,6 +985,14 @@ export interface components {
             updatedAt: string;
             /** Format: int64 */
             version: number;
+        };
+        SubmitAnalysisRequest: {
+            /** Format: uuid */
+            snapshotId?: string | null;
+            /** Format: int32 */
+            timeoutSeconds?: number | null;
+            /** Format: int32 */
+            priority?: number;
         };
         CreateRepositoryRequest: {
             name: string;
@@ -849,6 +1082,107 @@ export interface components {
         };
         AcceptInvitationRequest: {
             token: string;
+        };
+        FindingStatusRequest: {
+            /** @enum {string} */
+            status: "OPEN" | "CONFIRMED" | "FALSE_POSITIVE" | "ACCEPTED_RISK" | "FIXED" | "REOPENED";
+            reason?: string | null;
+            /** Format: int64 */
+            version?: number;
+        };
+        FindingDetail: {
+            finding: components["schemas"]["FindingView"];
+            rule: components["schemas"]["RuleView"];
+            occurrences: components["schemas"]["FindingOccurrenceView"][];
+            history: components["schemas"]["StatusChange"][];
+        };
+        FindingOccurrenceView: {
+            /** Format: uuid */
+            findingId: string;
+            /** Format: uuid */
+            jobId: string;
+            /** Format: uuid */
+            snapshotId: string;
+            ruleId: string;
+            /** Format: int32 */
+            ruleVersion: number;
+            severity: string;
+            /** @enum {string} */
+            status: "OPEN" | "CONFIRMED" | "FALSE_POSITIVE" | "ACCEPTED_RISK" | "FIXED" | "REOPENED";
+            message: string;
+            path: string;
+            /** Format: int32 */
+            startLine: number;
+            /** Format: int32 */
+            startColumn: number;
+            /** Format: int32 */
+            endLine: number;
+            /** Format: int32 */
+            endColumn: number;
+            snippet: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        FindingView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            ruleId: string;
+            ruleName: string;
+            /** Format: int32 */
+            ruleVersion: number;
+            category: string;
+            severity: string;
+            confidence: string;
+            /** @enum {string} */
+            status: "OPEN" | "CONFIRMED" | "FALSE_POSITIVE" | "ACCEPTED_RISK" | "FIXED" | "REOPENED";
+            evidenceLevel: string;
+            message: string;
+            path: string;
+            symbolKey?: string | null;
+            /** Format: int32 */
+            startLine: number;
+            /** Format: int32 */
+            endLine: number;
+            snippet: string;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            /** Format: uuid */
+            lastSeenJobId: string;
+            /** Format: uuid */
+            lastSeenSnapshotId: string;
+            /** Format: date-time */
+            resolvedAt?: string | null;
+            /** Format: int64 */
+            version: number;
+        };
+        RuleView: {
+            id: string;
+            /** Format: int32 */
+            version: number;
+            name: string;
+            category: string;
+            languages: string[];
+            summary: string;
+            description: string;
+            remediation: string;
+            severity: string;
+            confidence: string;
+        };
+        StatusChange: {
+            fromStatus?: string | null;
+            toStatus: string;
+            reason?: string | null;
+            actorType: string;
+            /** Format: uuid */
+            actorId?: string | null;
+            /** Format: uuid */
+            jobId?: string | null;
+            /** Format: date-time */
+            changedAt: string;
         };
         DevSessionRequest: {
             /** Format: email */
@@ -960,6 +1294,31 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        CodeSymbolView: {
+            key: string;
+            kind: string;
+            name: string;
+            container?: string | null;
+            path: string;
+            /** Format: int32 */
+            startLine: number;
+            /** Format: int32 */
+            endLine: number;
+            exported: boolean;
+            /** Format: int32 */
+            complexity?: number | null;
+            signature?: string | null;
+        };
+        /** @description A page of results */
+        PageCodeSymbolView: {
+            items: components["schemas"]["CodeSymbolView"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+        };
         /** @description A page of results */
         PageSnapshot: {
             items: components["schemas"]["Snapshot"][];
@@ -969,6 +1328,106 @@ export interface components {
             size: number;
             /** Format: int64 */
             total: number;
+        };
+        /** @description A page of results */
+        PageFindingView: {
+            items: components["schemas"]["FindingView"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        FindingCounts: {
+            bySeverity: {
+                [key: string]: number;
+            };
+            byStatus: {
+                [key: string]: number;
+            };
+            byRule: {
+                [key: string]: number;
+            };
+        };
+        DependencyEdge: {
+            from: string;
+            to: string;
+            /** Format: int32 */
+            count: number;
+        };
+        DependencyGraph: {
+            /** Format: uuid */
+            indexId: string;
+            nodes: components["schemas"]["DependencyNode"][];
+            edges: components["schemas"]["DependencyEdge"][];
+            external: components["schemas"]["ExternalDependency"][];
+            /** Format: int32 */
+            unresolved: number;
+        };
+        DependencyNode: {
+            path: string;
+            language: string;
+            /** Format: int32 */
+            lineCount: number;
+            /** Format: int32 */
+            symbolCount: number;
+            /** Format: int32 */
+            openFindings: number;
+            /** Format: int32 */
+            fanIn: number;
+            /** Format: int32 */
+            fanOut: number;
+        };
+        ExternalDependency: {
+            packageName: string;
+            /** Format: int32 */
+            importedBy: number;
+        };
+        CodeIndexView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            snapshotId: string;
+            /** Format: uuid */
+            jobId: string;
+            adapterId: string;
+            adapterVersion: string;
+            toolchain: string;
+            capabilities: {
+                [key: string]: unknown;
+            };
+            limitations: string[];
+            stats: {
+                [key: string]: unknown;
+            };
+            /** Format: int32 */
+            fileCount: number;
+            /** Format: int32 */
+            symbolCount: number;
+            /** Format: int32 */
+            importCount: number;
+            /** Format: int32 */
+            callCount: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CallEdgeView: {
+            from: string;
+            to: string;
+            path: string;
+            /** Format: int32 */
+            line: number;
+        };
+        FileAnnotations: {
+            path: string;
+            /** Format: uuid */
+            indexId?: string | null;
+            symbols: components["schemas"]["CodeSymbolView"][];
+            findings: components["schemas"]["FindingOccurrenceView"][];
+            diagnostics: {
+                [key: string]: unknown;
+            }[];
         };
         /** @description A page of results */
         PageOrganizationView: {
@@ -1001,6 +1460,9 @@ export interface components {
             /** Format: int32 */
             activeJobLimit: number;
             testTotals: components["schemas"]["TestTotals"];
+            openFindings: {
+                [key: string]: number;
+            };
             recentJobs: components["schemas"]["RecentJob"][];
             recentActivity: components["schemas"]["ActivityItem"][];
         };
@@ -1207,6 +1669,22 @@ export interface components {
             devLoginEnabled: boolean;
             oidcIssuer?: string | null;
         };
+        AnalysisDetail: {
+            job: components["schemas"]["Job"];
+            attempts: components["schemas"]["JobAttempt"][];
+            index: components["schemas"]["CodeIndexView"] | null;
+            findings: components["schemas"]["FindingCounts"] | null;
+        };
+        /** @description A page of results */
+        PageFindingOccurrenceView: {
+            items: components["schemas"]["FindingOccurrenceView"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -1356,6 +1834,34 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["SubmitTestRunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    submit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubmitAnalysisRequest"];
             };
         };
         responses: {
@@ -1603,6 +2109,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationView"];
+                };
+            };
+        };
+    };
+    changeStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FindingStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingDetail"];
                 };
             };
         };
@@ -1909,6 +2441,26 @@ export interface operations {
             };
         };
     };
+    rules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleView"][];
+                };
+            };
+        };
+    };
     catalog: {
         parameters: {
             query?: never;
@@ -1951,6 +2503,35 @@ export interface operations {
             };
         };
     };
+    symbols: {
+        parameters: {
+            query?: {
+                snapshotId?: string;
+                q?: string;
+                kind?: string;
+                path?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageCodeSymbolView"];
+                };
+            };
+        };
+    };
     revisions: {
         parameters: {
             query?: {
@@ -1972,6 +2553,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageSnapshot"];
+                };
+            };
+        };
+    };
+    projectFindings: {
+        parameters: {
+            query?: {
+                status?: ("OPEN" | "CONFIRMED" | "FALSE_POSITIVE" | "ACCEPTED_RISK" | "FIXED" | "REOPENED")[];
+                severity?: string[];
+                ruleId?: string;
+                path?: string;
+                q?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageFindingView"];
+                };
+            };
+        };
+    };
+    projectFindingCounts: {
+        parameters: {
+            query?: {
+                active?: boolean;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingCounts"];
                 };
             };
         };
@@ -1999,6 +2634,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageSourceFile"];
+                };
+            };
+        };
+    };
+    dependencies: {
+        parameters: {
+            query?: {
+                snapshotId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DependencyGraph"];
+                };
+            };
+        };
+    };
+    index: {
+        parameters: {
+            query?: {
+                snapshotId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeIndexView"];
+                };
+            };
+        };
+    };
+    calls: {
+        parameters: {
+            query?: {
+                snapshotId?: string;
+                symbol?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallEdgeView"][];
+                };
+            };
+        };
+    };
+    annotations: {
+        parameters: {
+            query: {
+                snapshotId: string;
+                path: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileAnnotations"];
                 };
             };
         };
@@ -2123,6 +2856,7 @@ export interface operations {
                 organizationId: string;
                 projectId?: string;
                 state?: ("QUEUED" | "LEASED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "TIMED_OUT" | "CANCELLED" | "INFRA_ERROR")[];
+                type?: "TEST_EXECUTION" | "STATIC_ANALYSIS";
                 page?: number;
                 size?: number;
             };
@@ -2281,6 +3015,28 @@ export interface operations {
             };
         };
     };
+    finding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingDetail"];
+                };
+            };
+        };
+    };
     authConfig: {
         parameters: {
             query?: never;
@@ -2297,6 +3053,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthConfigResponse"];
+                };
+            };
+        };
+    };
+    get_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisDetail"];
+                };
+            };
+        };
+    };
+    analysisFindings: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageFindingOccurrenceView"];
+                };
+            };
+        };
+    };
+    artifacts_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobArtifact"][];
                 };
             };
         };

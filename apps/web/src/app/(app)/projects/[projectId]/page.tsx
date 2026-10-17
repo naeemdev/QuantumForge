@@ -4,13 +4,15 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileCode2, GitBranch, Play, Plus, Upload } from "lucide-react";
+import { FileCode2, GitBranch, Play, Plus, ScanSearch, Upload } from "lucide-react";
 import type { CodeRepository, LanguageStat, Snapshot, SnapshotImportResult } from "@quantumforge/contracts";
 import { api, call, uploadWithProgress } from "@/lib/api";
-import { useJobs, useProject, useRepositories, useRevisions, useSnapshotLanguages, useSubmitTestRun } from "@/lib/queries";
+import { useFindingCounts, useJobs, useProject, useRepositories, useRevisions, useSnapshotLanguages, useSubmitAnalysis, useSubmitTestRun } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 import { formatBytes, formatDuration, formatRelative, shortDigest } from "@/lib/format";
 import { JobStateBadge, TestCounts } from "@/components/job-state";
+import { EvidenceNote, SeverityBadge } from "@/components/findings";
+import { SEVERITIES } from "@quantumforge/contracts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -252,7 +254,10 @@ export default function ProjectPage() {
   const revisions = useRevisions(projectId);
   const latest = revisions.data?.items[0];
   const languages = useSnapshotLanguages(latest?.id);
-  const jobs = useJobs({ projectId });
+  const jobs = useJobs({ projectId, type: "TEST_EXECUTION" });
+  const findingCounts = useFindingCounts(projectId);
+  const analyse = useSubmitAnalysis(projectId);
+  const router = useRouter();
   const [addingRepo, setAddingRepo] = useState(false);
   const [running, setRunning] = useState(false);
 
@@ -273,6 +278,18 @@ export default function ProjectPage() {
               <Link href={`/projects/${projectId}/source?snapshot=${latest.id}`}>
                 <Button><FileCode2 className="size-4" /> Browse source</Button>
               </Link>
+            )}
+            {can("job.submit") && (
+              <Button
+                disabled={!latest}
+                loading={analyse.isPending}
+                onClick={async () => {
+                  const job = await analyse.mutateAsync({ idempotencyKey: crypto.randomUUID(), snapshotId: latest?.id });
+                  router.push(`/test-runs/${job.id}`);
+                }}
+              >
+                <ScanSearch className="size-4" /> Analyse
+              </Button>
             )}
             {can("job.submit") && (
               <Button variant="primary" disabled={!latest} onClick={() => setRunning(true)} title={latest ? undefined : "Import a snapshot first"}>
@@ -389,6 +406,19 @@ export default function ProjectPage() {
             </CardBody>
           </Card>
           <Card>
+            <CardHeader title="Active findings" actions={<Link href={`/findings?project=${projectId}`} className="text-xs text-fg-2 hover:text-fg">Explore</Link>} />
+            <CardBody>
+              {findingCounts.data && Object.keys(findingCounts.data.bySeverity).length > 0 ? (
+                <ul className="space-y-1.5">
+                  {SEVERITIES.filter((s) => findingCounts.data.bySeverity[s]).map((s) => (
+                    <li key={s} className="flex items-center justify-between text-[13px]"><SeverityBadge severity={s} /><span className="tabular text-fg-2">{findingCounts.data.bySeverity[s]}</span></li>
+                  ))}
+                </ul>
+              ) : <p className="text-[13px] text-fg-3">No active findings. Run an analysis to check the latest snapshot.</p>}
+              <EvidenceNote className="mt-3" />
+            </CardBody>
+          </Card>
+          <Card>
             <CardHeader title="Details" />
             <dl className="divide-y divide-border text-[13px]">
               {[
@@ -408,6 +438,7 @@ export default function ProjectPage() {
       </div>
 
       <AddRepositoryDialog projectId={projectId} open={addingRepo} onClose={() => setAddingRepo(false)} />
+      <InlineError error={analyse.error} />
       {revisions.data && <RunTestsDialog projectId={projectId} snapshots={revisions.data.items} open={running} onClose={() => setRunning(false)} />}
     </>
   );

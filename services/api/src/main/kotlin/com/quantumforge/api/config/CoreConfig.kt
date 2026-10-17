@@ -6,6 +6,7 @@ import io.swagger.v3.oas.models.info.Info
 import io.swagger.v3.oas.models.info.License
 import io.swagger.v3.oas.models.security.SecurityRequirement
 import io.swagger.v3.oas.models.security.SecurityScheme
+import io.swagger.v3.oas.models.servers.Server
 import org.springdoc.core.customizers.OpenApiCustomizer
 import org.springdoc.core.models.GroupedOpenApi
 import org.springframework.context.annotation.Bean
@@ -24,6 +25,9 @@ class CoreConfig {
                 .description("Public REST API of the QuantumForge control plane. Worker endpoints are not part of this document.")
                 .license(License().name("Proprietary")),
         )
+        // A fixed relative server keeps the document identical across runs and hosts
+        // (otherwise springdoc embeds the request's host and port).
+        .servers(listOf(Server().url("/").description("This QuantumForge deployment")))
         .components(Components().addSecuritySchemes("bearer", SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer")))
         .addSecurityItem(SecurityRequirement().addList("bearer"))
 

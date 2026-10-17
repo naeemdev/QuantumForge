@@ -85,4 +85,19 @@ Run: `node --experimental-strip-types --test "tests/**/*.test.ts"` (no dependenc
 `D2.patch` and `D6.patch` both touch `src/cart.ts` in separate hunks; they apply
 independently and in either order.
 
+## Static analysis results (TypeScript adapter 0.1.0)
+
+| Defect | Rule | Detected |
+|---|---|---|
+| D1 rounding | QF-TS-008 binary-float-rounding | yes |
+| D2 validation | — | no (missing validation is not a pattern a syntax rule can see) |
+| D3 unhandled async | QF-TS-002 floating-promise | yes |
+| D4 retry | QF-TS-004 indiscriminate-retry | yes |
+| D5 concurrency | QF-TS-006 await-read-modify-write | yes |
+| D6 edge case | QF-TS-007 unguarded-division | yes |
+
+No other findings on the shipped tree; none after the fixes are applied. These rules
+were written knowing these defects, so this table is a regression check, not a
+measure of accuracy on unseen code.
+
 Provenance: original code written for this repository; no third-party code.

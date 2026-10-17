@@ -72,12 +72,31 @@ date. This page covers the conventions that the schema cannot express.
 | `GET /api/v1/jobs/{id}/artifacts` | `job.read` | |
 | `GET /api/v1/jobs/{id}/artifacts/{artifactId}/content` | `job.read` | Streams bytes; `X-Artifact-Sha256` header |
 
+### Code intelligence (Milestone 2)
+
+| Method & path | Permission | Notes |
+|---|---|---|
+| `POST /api/v1/projects/{id}/analyses` | `job.submit` | Queues a `STATIC_ANALYSIS` job; Idempotency-Key supported |
+| `GET /api/v1/analyses/{id}` | `job.read` | Job, attempts, code index summary and finding counts |
+| `GET /api/v1/analyses/{id}/findings` | `job.read` | Finding occurrences recorded by this analysis |
+| `GET /api/v1/analyses/{id}/artifacts` | `job.read` | Includes the raw `analysis.json` report |
+| `GET /api/v1/projects/{id}/code-index` | `project.read` | Latest index (or for `snapshotId`) with capabilities and limitations |
+| `GET /api/v1/projects/{id}/symbols` | `project.read` | `q`, `kind`, `path`, paged |
+| `GET /api/v1/projects/{id}/dependencies` | `project.read` | File graph (fan-in/out, findings), external packages, unresolved count |
+| `GET /api/v1/projects/{id}/calls` | `project.read` | Call edges, optionally for one `symbol` |
+| `GET /api/v1/projects/{id}/annotations?snapshotId&path` | `project.read` | Symbols, findings and diagnostics of one file |
+| `GET /api/v1/projects/{id}/findings` | `project.read` | Filters: repeated `status`, repeated `severity`, `ruleId`, `path`, `q` |
+| `GET /api/v1/projects/{id}/finding-counts` | `project.read` | By severity, status and rule |
+| `GET /api/v1/findings/{id}` | `project.read` | Finding, rule version, occurrences, status history |
+| `POST /api/v1/findings/{id}/status` | `finding.triage` | `CONFIRMED`, `FALSE_POSITIVE`, `ACCEPTED_RISK`, `OPEN`; dismissals need `reason`; versioned. `FIXED`/`REOPENED` are set only by analyses |
+| `GET /api/v1/rules` | authenticated | Rule catalogue (latest versions) |
+
 ### Mapping to the long-term API
 
 The product plan names `POST /projects/{id}/analyses`, `GET /analyses/{id}` and
-`/repair-verifications`. In M1 the only job type is test execution, exposed as
-`test-runs`. Analyses (M2) and repair verifications (M4) will be new job types on the
-same queue with their own resource paths; the `/jobs` endpoints stay the generic view.
+`/repair-verifications`. Test execution is exposed as `test-runs` and static
+analysis as `analyses`; repair verifications (M4) will be another job type on the same
+queue. The `/jobs` endpoints stay the generic view (filter with `type`).
 
 ## Worker protocol (internal, not in OpenAPI)
 

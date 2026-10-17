@@ -16,6 +16,8 @@ data class WorkerConfig(
     val containerRuntime: String = "docker",
     val containerImage: String = "node:22.22-bookworm-slim",
     val maxSnapshotBytes: Long = 200L * 1024 * 1024,
+    /** Directory of the TypeScript adapter (language-packs/typescript, with its dependencies installed). */
+    val tsAnalyzerDir: Path? = null,
 ) {
     companion object {
         fun fromEnvironment(env: Map<String, String> = System.getenv()): WorkerConfig {
@@ -28,6 +30,7 @@ data class WorkerConfig(
                 nodeExecutable = env["QF_NODE"] ?: "node",
                 containerRuntime = env["QF_CONTAINER_RUNTIME"] ?: "docker",
                 containerImage = env["QF_CONTAINER_IMAGE"] ?: "node:22.22-bookworm-slim",
+                tsAnalyzerDir = env["QF_TS_ANALYZER"]?.takeIf { it.isNotBlank() }?.let { Path.of(it).toAbsolutePath() },
             )
         }
     }
