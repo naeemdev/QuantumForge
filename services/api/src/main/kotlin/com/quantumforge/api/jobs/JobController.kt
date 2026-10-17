@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit
 
 data class SubmitTestRunRequest(
     val snapshotId: UUID? = null,
-    val config: TestExecutionConfig = TestExecutionConfig(),
+    val config: ExecutionConfig = ExecutionConfig(),
     @field:Min(-100) @field:Max(100) val priority: Int = 0,
 )
 
@@ -67,7 +67,7 @@ class JobController(
             }
         }
         val request = body ?: SubmitTestRunRequest()
-        val result = jobs.submit(ctx, SubmitJobCommand(projectId, request.snapshotId, request.config, request.priority, key))
+        val result = jobs.submit(ctx, SubmitJobCommand(JobType.TEST_EXECUTION, projectId, request.snapshotId, request.config, request.priority, key))
         val status = if (result.created) HttpStatus.CREATED else HttpStatus.OK
         return ResponseEntity.status(status).location(URI.create("/api/v1/jobs/${result.job.id}")).body(result.job)
     }
@@ -77,9 +77,10 @@ class JobController(
         @RequestParam organizationId: UUID,
         @RequestParam(required = false) projectId: UUID?,
         @RequestParam(required = false) state: List<JobState>?,
+        @RequestParam(required = false) type: JobType?,
         @RequestParam(required = false) page: Int?,
         @RequestParam(required = false) size: Int?,
-    ): Page<Job> = jobs.list(access.require(organizationId, Permission.JOB_READ), JobFilter(projectId, state.orEmpty()), PageRequest.of(page, size))
+    ): Page<Job> = jobs.list(access.require(organizationId, Permission.JOB_READ), JobFilter(projectId, state.orEmpty(), type), PageRequest.of(page, size))
 
     @GetMapping("/jobs/{id}")
     fun get(@PathVariable id: UUID): JobDetail {

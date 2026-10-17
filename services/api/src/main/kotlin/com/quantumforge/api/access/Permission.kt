@@ -14,6 +14,7 @@ enum class Permission(val code: String) {
     JOB_READ("job.read"),
     JOB_SUBMIT("job.submit"),
     JOB_CANCEL("job.cancel"),
+    FINDING_TRIAGE("finding.triage"),
     ;
 
     companion object {

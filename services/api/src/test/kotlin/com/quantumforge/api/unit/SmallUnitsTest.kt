@@ -3,7 +3,7 @@ package com.quantumforge.api.unit
 import com.quantumforge.api.common.ApiException
 import com.quantumforge.api.common.Ids
 import com.quantumforge.api.common.Slugs
-import com.quantumforge.api.jobs.TestExecutionConfig
+import com.quantumforge.api.jobs.ExecutionConfig
 import com.quantumforge.api.security.RateLimitFilter
 import com.quantumforge.api.security.SecurityErrorWriter
 import com.quantumforge.api.source.GitUrls
@@ -49,13 +49,13 @@ class SmallUnitsTest {
 
     @Test
     fun `test execution config is bounded`() {
-        TestExecutionConfig(testPatterns = listOf("tests/**/*.test.ts")).validated(600)
-        assertFailsWith<ApiException> { TestExecutionConfig(testPatterns = listOf("../x")).validated(600) }
-        assertFailsWith<ApiException> { TestExecutionConfig(testPatterns = listOf("-r")).validated(600) }
-        assertFailsWith<ApiException> { TestExecutionConfig(testPatterns = listOf("a;rm -rf /")).validated(600) }
-        assertFailsWith<ApiException> { TestExecutionConfig(timeoutSeconds = 601).validated(600) }
-        assertFailsWith<ApiException> { TestExecutionConfig(memoryMb = 10).validated(600) }
-        assertEquals(listOf("**/*.test.ts", "**/*.test.js", "**/*.test.mjs"), TestExecutionConfig().effectivePatterns())
+        ExecutionConfig(testPatterns = listOf("tests/**/*.test.ts")).validated(600)
+        assertFailsWith<ApiException> { ExecutionConfig(testPatterns = listOf("../x")).validated(600) }
+        assertFailsWith<ApiException> { ExecutionConfig(testPatterns = listOf("-r")).validated(600) }
+        assertFailsWith<ApiException> { ExecutionConfig(testPatterns = listOf("a;rm -rf /")).validated(600) }
+        assertFailsWith<ApiException> { ExecutionConfig(timeoutSeconds = 601).validated(600) }
+        assertFailsWith<ApiException> { ExecutionConfig(memoryMb = 10).validated(600) }
+        assertEquals(listOf("**/*.test.ts", "**/*.test.js", "**/*.test.mjs"), ExecutionConfig().effectivePatterns())
     }
 
     @Test
