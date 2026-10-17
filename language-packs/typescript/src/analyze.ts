@@ -55,13 +55,13 @@ export const ADAPTER: AdapterInfo = {
   ],
 };
 
-function languageOf(path: string): string | undefined {
+export function languageOf(path: string): string | undefined {
   if (path.endsWith(".d.ts")) return undefined;
   const dot = path.lastIndexOf(".");
   return dot < 0 ? undefined : SOURCE_EXTENSIONS.get(path.slice(dot).toLowerCase());
 }
 
-function listSourceFiles(root: string, options: AnalyzeOptions): { files: string[]; seen: number; truncated: boolean } {
+export function listSourceFiles(root: string, options: AnalyzeOptions): { files: string[]; seen: number; truncated: boolean } {
   const files: string[] = [];
   let seen = 0;
   let truncated = false;
@@ -81,6 +81,23 @@ function listSourceFiles(root: string, options: AnalyzeOptions): { files: string
   walk(root);
   return { files, seen, truncated };
 }
+
+/** Fixed compiler options; the project's own tsconfig is not used (see limitations). */
+export const COMPILER_OPTIONS: ts.CompilerOptions = {
+  target: ts.ScriptTarget.ES2022,
+  module: ts.ModuleKind.ESNext,
+  moduleResolution: ts.ModuleResolutionKind.Bundler,
+  allowJs: true,
+  checkJs: false,
+  jsx: ts.JsxEmit.Preserve,
+  noEmit: true,
+  strict: true,
+  skipLibCheck: true,
+  allowImportingTsExtensions: true,
+  resolveJsonModule: false,
+  types: [],
+  noResolve: false,
+};
 
 /**
  * Analyses every TypeScript/JavaScript file under root and returns the report.
@@ -107,21 +124,7 @@ export function analyze(rootDir: string, options: AnalyzeOptions = DEFAULT_OPTIO
     }
   }
 
-  const compilerOptions: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    allowJs: true,
-    checkJs: false,
-    jsx: ts.JsxEmit.Preserve,
-    noEmit: true,
-    strict: true,
-    skipLibCheck: true,
-    allowImportingTsExtensions: true,
-    resolveJsonModule: false,
-    types: [],
-    noResolve: false,
-  };
+  const compilerOptions = COMPILER_OPTIONS;
   const host = ts.createCompilerHost(compilerOptions, true);
   const program = ts.createProgram({ rootNames: analysable, options: compilerOptions, host });
   const checker = program.getTypeChecker();
