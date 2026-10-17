@@ -11,6 +11,7 @@
     "web:build": "pnpm --filter @quantumforge/web build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "analyzer:test": "pnpm --filter @quantumforge/lang-typescript test"
+    "analyzer:test": "pnpm --filter @quantumforge/lang-typescript test",
+    "e2e": "pnpm --filter @quantumforge/e2e test"
   }
 }

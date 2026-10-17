@@ -36,6 +36,10 @@ jobs:
       QF_TEST_S3_ENDPOINT: http://localhost:9090
       QF_TEST_S3_ACCESS_KEY: ci-access-key
       QF_TEST_S3_SECRET_KEY: ci-secret-key
+      # Container sandbox tests run against the runner's Docker daemon.
+      QF_TEST_DOCKER: "1"
+      QF_TEST_TS_ANALYZER: /tmp/ts-analyzer
+      QF_TEST_CONTAINER_IMAGE: node:22.22-bookworm-slim
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
@@ -49,6 +53,9 @@ jobs:
           cache: pnpm
       # The integration tests run the TypeScript adapter, which needs its dependencies.
       - run: pnpm install --frozen-lockfile --filter @quantumforge/lang-typescript...
+      # Containers cannot follow the workspace's symlinks, so they get a self-contained copy.
+      - run: pnpm --filter @quantumforge/lang-typescript deploy --prod --legacy "$QF_TEST_TS_ANALYZER"
+      - run: docker pull "$QF_TEST_CONTAINER_IMAGE"
       - uses: gradle/actions/setup-gradle@v5
       - name: Wait for the S3 test server
         run: for i in $(seq 1 60); do curl -s -o /dev/null http://localhost:9090/ && exit 0; sleep 1; done; exit 1
@@ -83,6 +90,50 @@ jobs:
       - run: pnpm --filter @quantumforge/lang-typescript test
       - run: pnpm lint
       - run: pnpm web:build
+
+  e2e:
+    name: End-to-end (browser)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: quantumforge_e2e
+          POSTGRES_USER: quantumforge
+          POSTGRES_PASSWORD: quantumforge
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U quantumforge -d quantumforge_e2e"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22.22"
+          cache: pnpm
+      - uses: gradle/actions/setup-gradle@v5
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @quantumforge/e2e exec playwright install --with-deps chromium
+      - name: Start API, worker and web console
+        run: scripts/e2e-stack.sh start
+      - name: Browser tests
+        run: pnpm --filter @quantumforge/e2e test
+      - name: Stop stack
+        if: always()
+        run: scripts/e2e-stack.sh stop
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: e2e-report
+          path: |
+            tests/e2e/playwright-report
+            tests/e2e/test-results
+            build/e2e/*.log
 
   corpus:
     name: Bug corpus
