@@ -1,14 +1,15 @@
 import ts from "typescript";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
-import {
-  REPORT_SCHEMA_VERSION,
-  type AdapterInfo,
-  type AnalysisReport,
-  type CallReport,
-  type FileReport,
-  type FindingReport,
-  type ImportReport,
+// Type-only imports: the adapter must run from a plain directory copy without
+// resolving the SDK package at runtime.
+import type {
+  AdapterInfo,
+  AnalysisReport,
+  CallReport,
+  FileReport,
+  FindingReport,
+  ImportReport,
 } from "@quantumforge/language-sdk";
 import { RULES } from "./rules/index.ts";
 import { indexSymbols, type IndexedSymbols } from "./symbols.ts";
@@ -187,7 +188,7 @@ export function analyze(rootDir: string, options: AnalyzeOptions = DEFAULT_OPTIO
 
   fileReports.sort((a, b) => a.path.localeCompare(b.path));
   return {
-    schemaVersion: REPORT_SCHEMA_VERSION,
+    schemaVersion: 1,
     adapter: ADAPTER,
     files: fileReports,
     symbols: index.symbols,

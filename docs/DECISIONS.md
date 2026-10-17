@@ -88,3 +88,30 @@ service; Testcontainers can be added where Docker is available.
 ### D-016 UI components kept in the web app for now
 `packages/ui` from the long-term layout is not created yet; primitives live in
 `apps/web/src/components/ui` until a second consumer exists.
+
+### D-017 Analysis runs in the sandbox, not the API
+Parsing and type-checking untrusted repositories is attacker-controlled input to a
+large compiler. The adapter therefore runs as a job in the worker sandbox and hands
+back a JSON report that the API validates against a schema and size limits before
+storing anything. A malformed report fails the job; it never partially ingests.
+
+### D-018 Adapters declare capabilities; the platform repeats them
+The report carries capability levels and plain-language limitations. They are
+stored with every index and shown in the UI, so a syntactic result is never
+presented as semantic understanding.
+
+### D-019 Content fingerprints for findings
+Findings are identified by rule, file, owning symbol and whitespace-normalised
+code rather than by line number. This survives unrelated edits, keeps triage
+decisions attached, and makes "fixed" mean "this code pattern is gone", not "the
+line moved".
+
+### D-020 Static findings are suspected, always
+A rule match is a suspicion. Findings carry `evidenceLevel = SUSPECTED`; human
+confirmation is recorded with the reviewer, but it does not turn a static match
+into a reproduced defect. Reproduction arrives with Break My Code (M3).
+
+### D-021 Self-hosted Monaco
+The code viewer bundles Monaco's editor core and Monarch grammars instead of loading
+them from a CDN, so self-hosted and air-gapped installations work, and no source
+code view depends on third-party script hosts.
