@@ -93,7 +93,7 @@ class ArchiveIngestor(private val properties: QuantumForgeProperties, private va
             }
             stream.use { readEntries(it, counting, archiveSize, staging, accepted, skipped) }
         }
-        return finish(accepted, skipped, workDir)
+        return finish(stripSingleRoot(accepted), skipped, workDir)
     }
 
     /**
@@ -288,6 +288,17 @@ class ArchiveIngestor(private val properties: QuantumForgeProperties, private va
             lineCount = if (binary) null else sniffer.lineCount(size),
             language = if (binary) null else languages.detect(name),
         )
+    }
+
+    /**
+     * Archives downloaded from code hosts wrap everything in one top-level folder
+     * ("project-main/..."). Strip it so snapshot paths match the repository root.
+     */
+    private fun stripSingleRoot(files: List<Staged>): List<Staged> {
+        val roots = files.map { it.file.path.substringBefore('/', missingDelimiterValue = "") }.toSet()
+        if (roots.size != 1 || roots.first().isEmpty()) return files
+        val prefix = roots.first() + "/"
+        return files.map { Staged(it.file.copy(path = it.file.path.removePrefix(prefix)), it.stagedPath) }
     }
 
     private fun finish(accepted: List<Staged>, skipped: List<SkippedEntry>, workDir: Path): IngestionResult {
