@@ -100,4 +100,20 @@ No other findings on the shipped tree; none after the fixes are applied. These r
 were written knowing these defects, so this table is a regression check, not a
 measure of accuracy on unseen code.
 
+## Fuzzing results (TypeScript fuzzer 0.1.0)
+
+| Defect | Found by fuzzing | Why |
+|---|---|---|
+| D1 rounding | no | Returns a wrong but finite number; generic oracles cannot know the right answer |
+| D2 validation | no | Accepting a negative quantity is not an engine error or a non-finite result |
+| D3 unhandled async | no | `placeOrder` takes a class instance and a callback interface; skipped |
+| D4 retry | no | `withRetry` is generic and takes a callback; skipped |
+| D5 concurrency | no | `InventoryService` is a class; skipped |
+| D6 edge case | **yes** | `averageUnitPrice({ lines: [] })` returns `NaN`; shrunk input, reproduced 3 of 3 |
+
+No other failures on the shipped tree, none after the fixes, and the stored D6 input
+passes once `D6.patch` is applied. The fuzzer's oracles are generic (they were not
+written for this corpus), but this sample is still too small to measure anything
+beyond regression.
+
 Provenance: original code written for this repository; no third-party code.

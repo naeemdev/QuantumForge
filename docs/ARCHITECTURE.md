@@ -150,6 +150,37 @@ API, in the job's completion transaction:
   cannot reopen what a newer one fixed.
 - **Evidence level:** static findings are always presented as *suspected*.
 
+## Break My Code (M3)
+
+Fuzzing is a third job type (`FUZZ_CAMPAIGN`, preset `TS_FUZZ`). Unlike analysis it
+executes project code, which is why it exists only as a sandboxed job.
+
+```
+API: submit → config.fuzz = { seed, iterations, call limit, corpus }
+        corpus = latest reproduction input of every open fuzzing finding
+worker sandbox: node language-packs/typescript/src/fuzz/cli.ts --root src --corpus out/corpus.json --out out/fuzz.json
+   discover   exported functions whose parameter types can be generated (compiler API);
+              classes, callbacks, generics, any/unknown and built-ins are skipped with a reason
+   per target one child process (heap limit), parent enforces the per-call timeout
+              1. replay corpus inputs for this function
+              2. generate inputs from the types (seeded PRNG, boundary values first)
+              3. oracles: engine error · NaN/Infinity from finite input · timeout · crash
+              4. on a new failure: shrink greedily, re-run 3× in fresh processes,
+                 emit a node:test regression test
+        ▼
+fuzz.json ──upload──▶ job_artifacts (FUZZ_REPORT)
+        │
+API, in the job's completion transaction:
+  validate → fuzz_campaigns, fuzz_targets
+  → findings (source FUZZING, rules QF-FUZZ-001..004, evidence REPRODUCED/OBSERVED)
+  → defect_reproductions
+  → FIXED for corpus findings whose input was replayed and no longer fails
+```
+
+A campaign is reproducible from its seed. Failures are identified by function,
+oracle and error signature (not the input), so the same defect found with a
+different input is the same finding.
+
 ## Frontend
 
 Next.js App Router, TypeScript strict, Tailwind, TanStack Query. Source is shown in a
@@ -167,7 +198,7 @@ services/api             Spring Boot control plane
 services/worker          execution worker
 packages/contracts       OpenAPI document + generated TypeScript types
 packages/language-sdk    language adapter contract (report schema, capabilities)
-language-packs/typescript TypeScript/JavaScript adapter and rules
+language-packs/typescript TypeScript/JavaScript adapter, rules and fuzzer (src/fuzz)
 benchmarks/bug-corpus    original sample repositories with documented seeded defects
 infrastructure/docker    Dockerfiles and compose files
 docs                     design docs, backlog, progress
