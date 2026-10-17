@@ -1,0 +1,14 @@
+{
+  "name": "@quantumforge/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser tests of the full stack: web console, API and a worker.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.20.5"
+  }
+}

@@ -38,9 +38,9 @@ class ContainerSandbox(
         val paths = SandboxPaths("/work/src", "/work/out", spec.tools.keys.associateWith { "/opt/qf/tools/$it" })
         val inner = spec.command(paths)
         val name = "qf-job-" + UUID.randomUUID().toString().take(12)
-        val cpus = "%.2f".format(spec.cpuMillis / 1000.0)
+        val cpus = String.format(java.util.Locale.ROOT, "%.2f", spec.cpuMillis / 1000.0)
         val args = buildList {
-            addAll(listOf(runtime, "run", "--rm", "--name", name))
+            addAll(listOf(runtime, "run", "--rm", "--name", name, "--pull", "missing"))
             if (gvisor) add("--runtime=runsc")
             addAll(listOf("--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges"))
             addAll(listOf("--pids-limit", "256", "--memory", "${spec.memoryMb}m", "--memory-swap", "${spec.memoryMb}m", "--cpus", cpus))
@@ -56,7 +56,7 @@ class ContainerSandbox(
         val process = ProcessBuilder(args).start()
         process.outputStream.close()
         val stdout = BoundedCapture(process.inputStream, spec.logDir.resolve("stdout.log"), spec.maxOutputBytes).start()
-        val stderr = BoundedCapture(process.errorStream, spec.logDir.resolve("stderr.log"), spec.maxOutputBytes).start()
+        val stderrCapture = BoundedCapture(process.errorStream, spec.logDir.resolve("stderr.log"), spec.maxOutputBytes).start()
         val deadline = started + spec.timeout.toNanos()
         var timedOut = false
         var cancelled = false
@@ -70,14 +70,24 @@ class ContainerSandbox(
             killTree(process)
             process.waitFor(10, TimeUnit.SECONDS)
         }
+        val exitCode = if (process.isAlive) null else process.exitValue()
+        val stderr = stderrCapture.finish()
+        // docker run exits 125 when the runtime fails (bad image, daemon error) and
+        // 126/127 when the command cannot be run; none of these come from the job.
+        val sandboxError = if (!timedOut && !cancelled && exitCode in setOf(125, 126, 127)) {
+            "Container runtime error (exit $exitCode): " + runCatching { java.nio.file.Files.readString(stderr.file).take(500) }.getOrDefault("")
+        } else {
+            null
+        }
         return ExecutionResult(
-            exitCode = if (process.isAlive) null else process.exitValue(),
+            exitCode = exitCode,
             timedOut = timedOut,
             cancelled = cancelled,
             durationMs = (System.nanoTime() - started) / 1_000_000,
             stdout = stdout.finish(),
-            stderr = stderr.finish(),
+            stderr = stderr,
             command = inner,
+            sandboxError = sandboxError,
         )
     }
 }

@@ -100,8 +100,8 @@ Milestone 1 broken into tasks, in dependency order. Status: ✅ done · 🔶 par
 
 | ID | Task | Notes |
 |---|---|---|
-| N1 | Container-mode end-to-end test in CI | Run `ContainerSandbox` against Docker on the CI runner |
-| N2 | Playwright UI test in CI | Promote the manual walkthrough script |
+| N1 | 🔶 Container-mode tests in CI | `ContainerSandboxTest` + `ContainerExecutionTest` written; run only in CI (no Docker locally) |
+| N2 | ✅ Playwright UI test in CI | `tests/e2e`, `scripts/e2e-stack.sh`; passes locally |
 | N3 | PostgreSQL row-level security | D-009 |
 | N4 | Retention and deletion policies | Snapshots, artifacts, audit export |
 | N5 | Shared rate-limit store | Needed before running more than one API instance |

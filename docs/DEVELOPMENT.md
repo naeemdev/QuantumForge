@@ -72,6 +72,36 @@ Integration tests rebuild the schema in `quantumforge_test` once per run. They c
 their own users and organizations, so they can run in any order. The acceptance test
 runs a real worker and needs `node` and `git` on the PATH.
 
+## End-to-end browser tests
+
+```bash
+sudo -u postgres psql -c "CREATE DATABASE quantumforge_e2e OWNER quantumforge"   # once
+pnpm install
+pnpm --filter @quantumforge/e2e exec playwright install chromium                 # once
+scripts/e2e-stack.sh start     # builds and starts API, worker (with analyzer) and web
+pnpm e2e
+scripts/e2e-stack.sh stop
+```
+
+The specs in `tests/e2e/specs` drive the real UI: sign-in, onboarding, importing
+the seeded sample, a test run (6 of 18 failing), an analysis (5 findings), triage
+and code intelligence. Logs are in `build/e2e/`.
+
+## Container sandbox tests
+
+`ContainerSandboxTest` (worker) and `ContainerExecutionTest` (API) need Docker and
+are skipped unless enabled:
+
+```bash
+pnpm --filter @quantumforge/lang-typescript deploy --prod --legacy /tmp/ts-analyzer
+docker pull node:22.22-bookworm-slim
+QF_TEST_DOCKER=1 QF_TEST_TS_ANALYZER=/tmp/ts-analyzer ./gradlew test
+```
+
+They check the isolation properties directly (uid 65534, read-only root and
+source, no network, worker secrets absent, timeouts, runtime errors reported as
+infrastructure errors) and run the M1/M2 acceptance flows in containers.
+
 ## Changing the API
 
 1. Change the Kotlin controller or DTO.
