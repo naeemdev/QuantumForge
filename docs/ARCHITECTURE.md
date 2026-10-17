@@ -15,6 +15,7 @@
                  │   ├─ source     (archive/Git ingestion, snapshots, files)         │
                  │   ├─ jobs       (queue, leasing, attempts, events, artifacts)     │
                  │   ├─ testing    (test runs and parsed results)                    │
+                 │   ├─ analysis   (code index, rules, findings and their lifecycle) │
                  │   ├─ audit      (append-only security audit trail)                │
                  │   └─ storage    (BlobStore: filesystem or S3/MinIO)               │
                  │        │                    │                                     │
@@ -115,9 +116,45 @@ The API refuses to dispatch to a worker reporting `dev-process` unless
 `quantumforge.execution.allow-dev-isolation=true`, which the `prod` profile
 forbids at startup. Plain Docker is **not** presented as a hostile-code boundary.
 
+## Code intelligence (M2)
+
+Analysis is a job type (`STATIC_ANALYSIS`) on the same queue. Parsing untrusted
+code is still processing hostile input, so it runs in the worker sandbox, never in
+the API.
+
+```
+worker sandbox: node language-packs/typescript/src/cli.ts --root src --out out/analysis.json
+        │  (TypeScript compiler API: parse, bind, type-check; never executes project code)
+        ▼
+analysis.json ──upload──▶ job_artifacts (ANALYSIS_REPORT)
+        │
+API, in the job's completion transaction:
+  validate against the language-sdk schema and limits
+  → code_indexes / code_files / code_symbols / code_imports / code_calls
+  → rules, rule_versions (registered from the report)
+  → findings (+ occurrences, status history)
+```
+
+- **Adapter contract** (`packages/language-sdk`): every adapter writes one
+  `AnalysisReport` and declares its capability levels (`none`, `syntactic`,
+  `semantic`) and limitations. The UI shows them next to the results.
+- **TypeScript adapter** (`language-packs/typescript`): symbols, resolved imports,
+  a direct call graph through the type checker, cyclomatic complexity, syntax
+  diagnostics, and nine versioned rules.
+- **Findings** are keyed by a fingerprint (rule + file + owning symbol + normalised
+  code + occurrence index), so they keep their identity when unrelated lines move.
+  Lifecycle: new → `OPEN`; seen again after `FIXED` → `REOPENED`; absent from an
+  analysis of a snapshot at least as new as where it was last seen, in a file that
+  was analysed → `FIXED`. Human decisions (`CONFIRMED`, `FALSE_POSITIVE`,
+  `ACCEPTED_RISK`) are never overwritten by analyses. Analysing an older snapshot
+  cannot reopen what a newer one fixed.
+- **Evidence level:** static findings are always presented as *suspected*.
+
 ## Frontend
 
-Next.js App Router, TypeScript strict, Tailwind, TanStack Query. The API client
+Next.js App Router, TypeScript strict, Tailwind, TanStack Query. Source is shown in a
+read-only, self-hosted Monaco editor (no CDN; syntax colouring only, no language
+services) with findings rendered as editor markers. The API client
 is typed from the OpenAPI document the backend generates
 (`packages/contracts/openapi.json` → `packages/contracts/src/schema.ts`).
 Pages only render data the API returned; there is no mock data in production code.
@@ -129,6 +166,8 @@ apps/web                 Next.js frontend
 services/api             Spring Boot control plane
 services/worker          execution worker
 packages/contracts       OpenAPI document + generated TypeScript types
+packages/language-sdk    language adapter contract (report schema, capabilities)
+language-packs/typescript TypeScript/JavaScript adapter and rules
 benchmarks/bug-corpus    original sample repositories with documented seeded defects
 infrastructure/docker    Dockerfiles and compose files
 docs                     design docs, backlog, progress

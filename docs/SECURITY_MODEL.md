@@ -69,6 +69,12 @@ Controls in every mode:
 The environment record of every attempt states the isolation mode and whether it is
 a hostile-code boundary. The UI shows a warning on runs that used `dev-process`.
 
+## Static analysis
+
+- The analyzer runs inside the worker sandbox with the same isolation as tests. It only parses and type-checks; it never executes project code, installs dependencies or reads files outside the snapshot (symlinks are skipped).
+- The API treats the report as untrusted: schema version, enum values, path shapes, rule references, fingerprint format, uniqueness and counts are validated, and free text is truncated. An invalid report fails the job without storing anything.
+- Findings are tenant- and project-scoped like every other row; non-members get 404 on findings, symbols, graphs and annotations (tested).
+
 ## Transport and headers
 
 - The API is stateless with bearer tokens only, so no cookies are issued. CSRF protection is therefore disabled deliberately.
