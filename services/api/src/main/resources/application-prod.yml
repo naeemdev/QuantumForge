@@ -1,0 +1,12 @@
+# Production. ProductionSafetyCheck refuses to start if any unsafe option is set.
+quantumforge:
+  auth:
+    dev-login:
+      enabled: false
+  execution:
+    allow-dev-isolation: false
+  storage:
+    type: s3
+logging:
+  level:
+    com.quantumforge: INFO

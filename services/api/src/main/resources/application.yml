@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: quantumforge-api
+  datasource:
+    url: ${QF_DB_URL:jdbc:postgresql://localhost:5432/quantumforge}
+    username: ${QF_DB_USER:quantumforge}
+    password: ${QF_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${QF_DB_POOL_SIZE:20}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: ${QF_MAX_UPLOAD:50MB}
+      max-request-size: ${QF_MAX_UPLOAD:50MB}
+      file-size-threshold: 1MB
+  threads:
+    virtual:
+      enabled: true
+  jackson:
+    default-property-inclusion: always
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  port: ${QF_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: []
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  default-produces-media-type: application/json
+
+logging:
+  pattern:
+    console: "%d{ISO8601} %-5level [%X{requestId:-}] %logger{36} - %msg%n"
+  level:
+    root: INFO
+    com.quantumforge: INFO
+
+quantumforge:
+  auth:
+    oidc:
+      issuer-uri: ${QF_OIDC_ISSUER:}
+      audience: ${QF_OIDC_AUDIENCE:}
+    dev-login:
+      enabled: ${QF_DEV_LOGIN:false}
+  storage:
+    type: ${QF_STORAGE_TYPE:filesystem}
+    filesystem-root: ${QF_STORAGE_ROOT:./data/blobs}
+    s3:
+      endpoint: ${QF_S3_ENDPOINT:}
+      region: ${QF_S3_REGION:us-east-1}
+      bucket: ${QF_S3_BUCKET:quantumforge}
+      access-key: ${QF_S3_ACCESS_KEY:}
+      secret-key: ${QF_S3_SECRET_KEY:}
+  execution:
+    allow-dev-isolation: ${QF_ALLOW_DEV_ISOLATION:false}
+  internal-api:
+    port: ${QF_INTERNAL_PORT:8081}
+  cors:
+    allowed-origins: ${QF_CORS_ORIGINS:http://localhost:3000}
