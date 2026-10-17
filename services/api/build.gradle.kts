@@ -67,3 +67,6 @@ tasks.register<Test>("exportOpenApi") {
 tasks.named<Test>("test") {
     useJUnitPlatform { excludeTags("openapi-export") }
 }
+
+// Only the executable boot jar is published; the plain jar would be ambiguous in images.
+tasks.named<Jar>("jar") { enabled = false }
