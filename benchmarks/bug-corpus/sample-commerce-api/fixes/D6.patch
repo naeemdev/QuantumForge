@@ -1,0 +1,11 @@
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -48,5 +48,7 @@
+  * returns NaN, which then poisons every downstream calculation.
+  */
+ export function averageUnitPrice(cart: Cart): number {
+-  return roundCurrency(subtotal(cart) / itemCount(cart));
++  const count = itemCount(cart);
++  if (count === 0) return 0;
++  return roundCurrency(subtotal(cart) / count);
+ }

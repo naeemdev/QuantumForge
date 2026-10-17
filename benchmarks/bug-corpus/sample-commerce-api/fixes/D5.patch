@@ -1,0 +1,46 @@
+--- a/src/inventory.ts
++++ b/src/inventory.ts
+@@ -33,11 +33,28 @@
+ 
+ export class InventoryService {
+   private readonly store: StockStore;
++  private readonly locks = new Map<string, Promise<void>>();
+ 
+   constructor(store: StockStore) {
+     this.store = store;
+   }
+ 
++  /** Serialises operations per SKU so read-check-write runs atomically. */
++  private async withLock<T>(sku: string, operation: () => Promise<T>): Promise<T> {
++    const previous = this.locks.get(sku) ?? Promise.resolve();
++    let release!: () => void;
++    const current = new Promise<void>((resolve) => { release = resolve; });
++    const tail = previous.then(() => current);
++    this.locks.set(sku, tail);
++    await previous;
++    try {
++      return await operation();
++    } finally {
++      release();
++      if (this.locks.get(sku) === tail) this.locks.delete(sku);
++    }
++  }
++
+   /**
+    * Reserves units of a SKU.
+    *
+@@ -46,9 +63,11 @@
+    * both pass the check and both write, so the last unit is sold twice.
+    */
+   async reserve(sku: string, quantity: number): Promise<void> {
+-    const available = await this.store.get(sku);
+-    if (available < quantity) throw new OutOfStockError(sku);
+-    await this.store.set(sku, available - quantity);
++    await this.withLock(sku, async () => {
++      const available = await this.store.get(sku);
++      if (available < quantity) throw new OutOfStockError(sku);
++      await this.store.set(sku, available - quantity);
++    });
+   }
+ 
+   available(sku: string): Promise<number> {

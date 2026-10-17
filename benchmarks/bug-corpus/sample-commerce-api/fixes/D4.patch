@@ -1,0 +1,26 @@
+--- a/src/retry.ts
++++ b/src/retry.ts
+@@ -15,6 +15,14 @@
+   sleep?: (ms: number) => Promise<void>;
+ }
+ 
++/** Client errors (4xx) are permanent, except 408 Request Timeout and 429 Too Many Requests. */
++function isRetryable(error: unknown): boolean {
++  if (error instanceof HttpError) {
++    return error.status >= 500 || error.status === 408 || error.status === 429;
++  }
++  return true;
++}
++
+ const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+ 
+ /**
+@@ -32,7 +40,7 @@
+     try {
+       return await fn();
+     } catch (error) {
+-      if (attempt >= options.retries) throw error;
++      if (attempt >= options.retries || !isRetryable(error)) throw error;
+       await sleep(options.baseDelayMs * 2 ** attempt);
+       attempt++;
+     }

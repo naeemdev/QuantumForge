@@ -1,0 +1,14 @@
+--- a/src/money.ts
++++ b/src/money.ts
+@@ -8,7 +8,10 @@
+  * down to 1.00 instead of 1.01.
+  */
+ export function roundCurrency(amount: number): number {
+-  return Number(amount.toFixed(2));
++  // Round the decimal representation, not the binary one: shift by two digits
++  // in exponent notation so 1.005 becomes exactly 100.5 before rounding.
++  const shifted = Number(`${Math.abs(amount)}e2`);
++  return (Math.sign(amount) * Math.round(shifted)) / 100;
+ }
+ 
+ export function formatUsd(amount: number): string {
