@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { Activity, Building2, ChevronsUpDown, FolderGit2, LayoutDashboard, LogOut, Map, Settings } from "lucide-react";
+import { Activity, Braces, Building2, ShieldAlert, ChevronsUpDown, FolderGit2, LayoutDashboard, LogOut, Map, Settings } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { Spinner } from "./ui/states";
 import { ThemeSwitcher } from "./theme";
@@ -12,6 +12,8 @@ import { cn } from "./ui/cn";
 const primary = [
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
+  { href: "/code-intelligence", label: "Code Intelligence", icon: Braces },
+  { href: "/findings", label: "Findings", icon: ShieldAlert },
   { href: "/test-runs", label: "Test Runs", icon: Activity },
 ];
 
@@ -21,7 +23,7 @@ const admin = [
 ];
 
 /** Modules that exist in the product plan but have no backend yet. Shown as planned, never as working. */
-const planned = ["Code Intelligence", "Break My Code", "Findings", "Repair Verification", "Code Graph", "Reports"];
+const planned = ["Break My Code", "Repair Verification", "Code Graph", "Reports"];
 
 function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: typeof Activity }) {
   const pathname = usePathname();

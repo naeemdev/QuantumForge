@@ -8,7 +8,8 @@ import { Check, ChevronDown, ChevronRight, CircleDashed, Download, Loader2, X } 
 import { TERMINAL_JOB_STATES, type JobArtifact, type JobAttempt, type JobDetail, type JobEvent, type TestCaseView } from "@quantumforge/contracts";
 import { authorizedFetch } from "@/lib/api";
 import { useJobEvents } from "@/lib/job-stream";
-import { useCancelJob, useJob, useJobArtifacts, useJobTestResults, useProject } from "@/lib/queries";
+import { useAnalysisFindings, useCancelJob, useJob, useJobArtifacts, useJobTestResults, useProject } from "@/lib/queries";
+import { FindingStatusBadge, SeverityBadge } from "@/components/findings";
 import { useSession } from "@/lib/session";
 import { formatBytes, formatDateTime, formatDuration, formatRelative } from "@/lib/format";
 import { JobStateBadge } from "@/components/job-state";
@@ -20,13 +21,20 @@ import { EmptyState, ErrorState, Spinner } from "@/components/ui/states";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { cn } from "@/components/ui/cn";
 
-type Tab = "tests" | "logs" | "environment" | "timeline" | "artifacts";
+type Tab = "tests" | "findings" | "logs" | "environment" | "timeline" | "artifacts";
 
 /** Plain statement of what the result does and does not show. */
 function Verdict({ detail }: { detail: JobDetail }) {
   const { job } = detail;
   const tests = job.resultSummary?.tests as Record<string, number> | undefined;
+  const analysis = job.resultSummary?.analysis as Record<string, number> | undefined;
   const text = (() => {
+    if (job.jobType === "STATIC_ANALYSIS" && job.state === "SUCCEEDED") {
+      return `Analysis completed: ${analysis?.symbols ?? 0} symbols indexed, ${analysis?.findings ?? 0} findings detected (${analysis?.newFindings ?? 0} new, ${analysis?.reopened ?? 0} reopened, ${analysis?.fixed ?? 0} no longer detected). Findings are suspected issues from pattern rules, not reproduced defects.`;
+    }
+    if (job.jobType === "STATIC_ANALYSIS" && job.state === "FAILED") {
+      return `The analysis did not complete: ${job.failureReason ?? "see logs"}.`;
+    }
     switch (job.state) {
       case "SUCCEEDED":
         return `All ${tests?.total ?? 0} executed tests passed on this snapshot. This shows the configured tests pass; it does not show the code is free of defects.`;
@@ -44,7 +52,7 @@ function Verdict({ detail }: { detail: JobDetail }) {
         return "The run has not finished yet.";
     }
   })();
-  const tone = job.state === "SUCCEEDED" ? "border-success/30 bg-success-soft" : job.state === "FAILED" ? "border-danger/30 bg-danger-soft" : "border-border bg-surface-2";
+  const tone = job.jobType === "STATIC_ANALYSIS" && job.state === "SUCCEEDED" ? "border-border bg-surface-2" : job.state === "SUCCEEDED" ? "border-success/30 bg-success-soft" : job.state === "FAILED" ? "border-danger/30 bg-danger-soft" : "border-border bg-surface-2";
   return <div className={cn("rounded-md border px-4 py-3 text-[13px] text-fg", tone)}>{text}</div>;
 }
 
@@ -146,6 +154,32 @@ function TestsTab({ jobId, finished }: { jobId: string; finished: boolean }) {
         <tbody>{cases.map((c) => <TestCaseRow key={c.ordinal} c={c} initiallyOpen={c.ordinal === firstFailure} />)}</tbody>
       </Table>
     </>
+  );
+}
+
+function FindingsTab({ jobId, finished }: { jobId: string; finished: boolean }) {
+  const findings = useAnalysisFindings(jobId, finished);
+  if (!finished) return <EmptyState title="Waiting for results" description="Findings are recorded when the analysis completes." />;
+  if (findings.isPending) return <Spinner />;
+  if (findings.isError) return <div className="p-4"><ErrorState error={findings.error} /></div>;
+  if (findings.data.items.length === 0) return <EmptyState title="No findings" description="No rule matched this snapshot. That does not mean the code is free of defects." />;
+  return (
+    <Table>
+      <thead><tr><Th>Severity</Th><Th>Finding</Th><Th>Location</Th><Th>Current status</Th></tr></thead>
+      <tbody>
+        {findings.data.items.map((f) => (
+          <Tr key={f.findingId}>
+            <Td><SeverityBadge severity={f.severity} /></Td>
+            <Td className="max-w-md">
+              <Link href={`/findings/${f.findingId}`} className="block truncate text-fg hover:underline">{f.message}</Link>
+              <p className="font-mono text-xs text-fg-3">{f.ruleId} v{f.ruleVersion}</p>
+            </Td>
+            <Td className="font-mono text-xs">{f.path}:{f.startLine}</Td>
+            <Td><FindingStatusBadge status={f.status} /></Td>
+          </Tr>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 
@@ -309,18 +343,20 @@ export default function JobPage() {
   const project = useProject(detail.data?.job.projectId ?? "");
   const artifacts = useJobArtifacts(jobId, events.filter((e) => e.eventType === "job.artifact").length);
   const cancel = useCancelJob(jobId);
-  const [tab, setTab] = useState<Tab>("tests");
 
   const terminal = detail.data ? TERMINAL_JOB_STATES.includes(detail.data.job.state) : false;
+  const isAnalysis = detail.data?.job.jobType === "STATIC_ANALYSIS";
+  const [chosenTab, setTab] = useState<Tab | null>(null);
+  const tab: Tab = chosenTab ?? (isAnalysis ? "findings" : "tests");
   const tabs = useMemo(
     () => [
-      { id: "tests" as const, label: "Tests" },
+      isAnalysis ? { id: "findings" as const, label: "Findings" } : { id: "tests" as const, label: "Tests" },
       { id: "logs" as const, label: "Logs" },
       { id: "environment" as const, label: "Environment" },
       { id: "timeline" as const, label: "Timeline" },
       { id: "artifacts" as const, label: `Artifacts${artifacts.data ? ` (${artifacts.data.length})` : ""}` },
     ],
-    [artifacts.data],
+    [artifacts.data, isAnalysis],
   );
 
   if (detail.isPending) return <Spinner />;
@@ -331,11 +367,11 @@ export default function JobPage() {
     <>
       <PageHeader
         breadcrumbs={[
-          { label: "Test runs", href: "/test-runs" },
+          isAnalysis ? { label: "Code Intelligence", href: `/code-intelligence?project=${job.projectId}` } : { label: "Test runs", href: "/test-runs" },
           ...(project.data ? [{ label: project.data.name, href: `/projects/${job.projectId}` }] : []),
           { label: job.id.slice(-8) },
         ]}
-        title={<span className="flex items-center gap-3">Test run <span className="font-mono text-base text-fg-2">{job.id.slice(-8)}</span> <JobStateBadge state={job.state} /></span>}
+        title={<span className="flex items-center gap-3">{isAnalysis ? "Analysis" : "Test run"} <span className="font-mono text-base text-fg-2">{job.id.slice(-8)}</span> <JobStateBadge state={job.state} /></span>}
         actions={!terminal && can("job.cancel") && (
           <Button variant="danger" onClick={() => cancel.mutate()} loading={cancel.isPending} disabled={job.cancelRequested}>
             <X className="size-4" /> {job.cancelRequested ? "Cancelling…" : "Cancel run"}
@@ -351,7 +387,7 @@ export default function JobPage() {
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px] md:grid-cols-4">
               {[
                 ["Snapshot", <Link key="s" href={`/projects/${job.projectId}/source?snapshot=${job.snapshotId}`} className="font-mono text-xs hover:underline">{job.snapshotId.slice(-12)}</Link>],
-                ["Runner", job.config.preset === "NODE_TEST" ? "node:test" : job.config.preset],
+                ["Runner", job.config.preset === "NODE_TEST" ? "node:test" : job.config.preset === "TS_ANALYSIS" ? "TypeScript adapter" : job.config.preset],
                 ["Queued", formatRelative(job.queuedAt)],
                 ["Duration", formatDuration(job.resultSummary?.durationMs as number | undefined)],
                 ["Attempts", `${job.attemptCount} of ${job.maxAttempts}`],
@@ -384,6 +420,7 @@ export default function JobPage() {
           </div>
           <div role="tabpanel">
             {tab === "tests" && <TestsTab jobId={jobId} finished={terminal} />}
+            {tab === "findings" && <FindingsTab jobId={jobId} finished={terminal} />}
             {tab === "logs" && <LogsTab jobId={jobId} artifacts={artifacts.data ?? []} />}
             {tab === "environment" && <EnvironmentTab attempts={attempts} />}
             {tab === "timeline" && <TimelineTab events={events} live={live} />}
