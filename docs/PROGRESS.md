@@ -30,21 +30,20 @@ other code (backlog N13).
 
 | Suite | Tests | Result |
 |---|---|---|
-| Backend (API + worker, JUnit) | 41 | 40 pass, 1 skipped (S3 contract test; runs in CI against MinIO) |
+| Backend (API + worker, JUnit) | 41 | 41 pass with `QF_TEST_S3_ENDPOINT` set (S3 contract test runs against Adobe S3Mock); otherwise 1 skipped |
 | TypeScript adapter (`node:test`) | 15 | pass |
 | Web: typecheck, lint, production build | — | pass |
 | Bug corpus verification script | — | pass |
 
 ## Not verified in this environment
 
-There is no Docker daemon and MinIO cannot be downloaded here, so the following run
-only in CI:
-- the container images, including the new analyzer stage in the worker image
-- the S3 storage path
-- the `container` / `container-gvisor` sandboxes, which are implemented but have not been executed
+There is no Docker daemon here, so the following run only in CI:
+- the container images, including the analyzer stage in the worker image
+- the `container` / `container-gvisor` sandboxes, which are implemented but have not been executed (backlog N1)
 
-OIDC sign-in against a real identity provider has not been exercised; tests use the
-development issuer.
+The S3 blob store contract test runs locally against Adobe S3Mock 4.11.0 and in CI
+as a service container. OIDC sign-in against a real identity provider has not been
+exercised; tests use the development issuer.
 
 ## Next
 
