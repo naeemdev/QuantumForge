@@ -65,7 +65,7 @@ jobs:
         run: |
           ./gradlew :services:api:exportOpenApi --console=plain
           git diff --exit-code packages/contracts/openapi.json
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: test-reports
@@ -143,6 +143,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22.22"
+          # package.json declares pnpm, but this job does not install it.
+          package-manager-cache: false
       - run: scripts/verify-bug-corpus.sh
 
   images:
