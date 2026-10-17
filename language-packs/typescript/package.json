@@ -1,0 +1,20 @@
+{
+  "name": "@quantumforge/lang-typescript",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript/JavaScript language adapter: indexing, dependency and call graphs, complexity and static analysis rules.",
+  "type": "module",
+  "bin": { "qf-ts-analyze": "./src/cli.ts" },
+  "scripts": {
+    "test": "node --experimental-strip-types --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "analyze": "node --experimental-strip-types src/cli.ts"
+  },
+  "dependencies": {
+    "@quantumforge/language-sdk": "workspace:*",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5"
+  }
+}
