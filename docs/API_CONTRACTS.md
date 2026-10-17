@@ -85,17 +85,29 @@ date. This page covers the conventions that the schema cannot express.
 | `GET /api/v1/projects/{id}/dependencies` | `project.read` | File graph (fan-in/out, findings), external packages, unresolved count |
 | `GET /api/v1/projects/{id}/calls` | `project.read` | Call edges, optionally for one `symbol` |
 | `GET /api/v1/projects/{id}/annotations?snapshotId&path` | `project.read` | Symbols, findings and diagnostics of one file |
-| `GET /api/v1/projects/{id}/findings` | `project.read` | Filters: repeated `status`, repeated `severity`, `ruleId`, `path`, `q` |
+| `GET /api/v1/projects/{id}/findings` | `project.read` | Filters: repeated `status`, repeated `severity`, `ruleId`, `path`, `q`, `source` (`STATIC_ANALYSIS`, `FUZZING`) |
 | `GET /api/v1/projects/{id}/finding-counts` | `project.read` | By severity, status and rule |
-| `GET /api/v1/findings/{id}` | `project.read` | Finding, rule version, occurrences, status history |
+| `GET /api/v1/findings/{id}` | `project.read` | Finding (with `source` and `evidenceLevel`), rule version, occurrences, status history, reproductions |
 | `POST /api/v1/findings/{id}/status` | `finding.triage` | `CONFIRMED`, `FALSE_POSITIVE`, `ACCEPTED_RISK`, `OPEN`; dismissals need `reason`; versioned. `FIXED`/`REOPENED` are set only by analyses |
 | `GET /api/v1/rules` | authenticated | Rule catalogue (latest versions) |
+
+### Break My Code (Milestone 3)
+
+| Method & path | Permission | Notes |
+|---|---|---|
+| `POST /api/v1/projects/{id}/fuzz-campaigns` | `job.submit` | Queues a `FUZZ_CAMPAIGN` job. Body: `snapshotId`, `seed`, `iterationsPerTarget` (1–100000), `callTimeoutMs` (50–60000), `timeoutSeconds`, `priority`. The API adds the project's open fuzzing findings' reproduction inputs as the replay corpus (not part of the idempotency hash). Idempotency-Key supported |
+| `GET /api/v1/projects/{id}/fuzz-campaigns` | `project.read` | Campaign jobs, newest first, with campaign statistics once finished |
+| `GET /api/v1/fuzz-campaigns/{id}` | `job.read` | Job, attempts, campaign (engine, seed, oracles, limitations, counts), every target tested or skipped with the reason, and the reproductions this campaign recorded |
+| `GET /api/v1/fuzz-campaigns/{id}/artifacts` | `job.read` | Includes the raw `fuzz.json` report |
+
+Reproduction inputs use a JSON encoding that tags what JSON cannot carry:
+`{"$qf": "NaN" | "Infinity" | "-Infinity" | "-0" | "undefined"}`.
 
 ### Mapping to the long-term API
 
 The product plan names `POST /projects/{id}/analyses`, `GET /analyses/{id}` and
 `/repair-verifications`. Test execution is exposed as `test-runs` and static
-analysis as `analyses`; repair verifications (M4) will be another job type on the same
+analysis as `analyses`, fuzzing as `fuzz-campaigns`; repair verifications (M4) will be another job type on the same
 queue. The `/jobs` endpoints stay the generic view (filter with `type`).
 
 ## Worker protocol (internal, not in OpenAPI)

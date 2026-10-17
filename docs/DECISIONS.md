@@ -109,9 +109,39 @@ line moved".
 ### D-020 Static findings are suspected, always
 A rule match is a suspicion. Findings carry `evidenceLevel = SUSPECTED`; human
 confirmation is recorded with the reviewer, but it does not turn a static match
-into a reproduced defect. Reproduction arrives with Break My Code (M3).
+into a reproduced defect. Reproduced defects come from Break My Code (D-024, D-025).
 
 ### D-021 Self-hosted Monaco
 The code viewer bundles Monaco's editor core and Monarch grammars instead of loading
 them from a CDN, so self-hosted and air-gapped installations work, and no source
 code view depends on third-party script hosts.
+
+### D-022 Fuzzing uses generic oracles, not guessed specifications
+The fuzzer reports only what is wrong regardless of intent: engine errors on
+type-correct input, NaN/Infinity from finite input, hangs and crashes. It does not
+guess what a function *should* return, so wrong-but-plausible results (D1's
+rounding) stay out of reach until property or specification input exists. Errors the
+code throws deliberately count as input rejection, not failures.
+
+### D-023 One child process per target, limits enforced by the process
+Each fuzzed function runs in its own Node.js child process with a V8 heap limit and
+a per-call timer in the parent. Worker threads were tried first: their heap limits
+are not enforced for large allocations, so a runaway function could exhaust the
+sandbox's memory and take the whole campaign down. A process can be killed
+without trace and its `process.exit` cannot end the campaign. The whole fuzzer still
+runs inside the worker sandbox; the child processes are a second layer, not the
+security boundary.
+
+### D-024 A fuzzing finding is fixed only when its input stops failing
+Not finding a failure again proves nothing: random generation may simply miss it.
+Every campaign therefore receives the stored reproduction inputs of the project's
+open fuzzing findings and replays them before generating new inputs. A finding
+becomes `FIXED` only when its own input was replayed and no longer fails the same
+way. Findings are tracked per source (static analysis, fuzzing): an analysis never
+resolves a fuzzing finding and a campaign never resolves a static one.
+
+### D-025 Evidence levels
+`SUSPECTED` (a static rule matched), `OBSERVED` (a campaign saw the failure but not
+every fresh re-run reproduced it), `REPRODUCED` (every one of the fresh re-runs
+failed the same way). The level is stored per finding and shown wherever the
+finding appears.

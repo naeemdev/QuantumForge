@@ -100,7 +100,7 @@ Milestone 1 broken into tasks, in dependency order. Status: ✅ done · 🔶 par
 
 | ID | Task | Notes |
 |---|---|---|
-| N1 | 🔶 Container-mode tests in CI | `ContainerSandboxTest` + `ContainerExecutionTest` written; run only in CI (no Docker locally) |
+| N1 | ✅ Container-mode tests in CI | `ContainerSandboxTest` + `ContainerExecutionTest` pass in CI (no Docker locally) |
 | N2 | ✅ Playwright UI test in CI | `tests/e2e`, `scripts/e2e-stack.sh`; passes locally |
 | N3 | PostgreSQL row-level security | D-009 |
 | N4 | Retention and deletion policies | Snapshots, artifacts, audit export |
@@ -142,3 +142,30 @@ Milestone 1 broken into tasks, in dependency order. Status: ✅ done · 🔶 par
 ### M2-T6 ✅ UI
 - **Files:** `apps/web/src/app/(app)/code-intelligence`, `findings`, `findings/[findingId]`, source viewer, run page
 - **Details:** Self-hosted Monaco viewer with finding markers and outline; symbol search with callers/callees; dependency table; findings explorer and triage with reasons.
+
+---
+
+## Milestone 3 — Break My Code
+
+### M3-T1 ✅ Type-driven fuzzer
+- **Files:** `language-packs/typescript/src/fuzz/**`
+- **Details:** Target discovery from declared types (skips with reasons), seeded generation with boundary values, generic oracles (engine error, non-finite result, timeout, crash), one child process per target with heap limit, greedy shrinking, three fresh re-runs per failure, generated node:test regression tests, corpus replay, campaign budget.
+- **Tests:** `language-packs/typescript/test/fuzz.test.ts` (10): codec, generation determinism, shrinking, discovery and skip reasons, each oracle, corpus replay, budget, seed reproducibility, and the corpus before/after fixes (including running the generated test).
+
+### M3-T2 ✅ Campaign job, ingestion and finding lifecycle
+- **Files:** `V5__fuzzing.sql`, `fuzzing/*`, `analysis/FindingRecorder.kt`, worker `JobRunner.kt`
+- **Details:** `FUZZ_CAMPAIGN` job with `TS_FUZZ` preset; report validation; campaigns, targets and reproductions stored; findings with source and evidence level; lifecycle scoped by source; fixes confirmed only by replaying the stored input.
+- **Tests:** `BreakMyCodeTest` (find, reproduce, replay with a new seed, static analysis cannot resolve it, fix confirmed, older snapshot cannot reopen, tenant isolation), `FuzzReportTest`, `ContainerExecutionTest` (campaign in a container, CI).
+
+### M3-T3 ✅ UI
+- **Files:** `apps/web/src/app/(app)/break-my-code/**`, `components/fuzzing.tsx`, findings pages
+- **Tests:** Playwright `break-my-code.spec.ts`.
+
+### M3-T4 ⬜ Mutation testing
+- Operators: comparison, arithmetic, condition removal, constants, call removal. Run the project's tests against each mutant in the sandbox; report killed/survived with the surviving diff.
+
+### M3-T5 ⬜ Property-based tests
+- Let users declare properties (e.g. `roundCurrency(x)` within half a cent of `x`) that the generator checks, which is what generic oracles cannot do (D1).
+
+### M3-T6 ⬜ Fuzzing class methods and callbacks
+- Construct instances from constructor types and generate method call sequences; synthesize simple callbacks. Today these targets are skipped with the reason.

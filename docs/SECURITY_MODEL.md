@@ -75,6 +75,13 @@ a hostile-code boundary. The UI shows a warning on runs that used `dev-process`.
 - The API treats the report as untrusted: schema version, enum values, path shapes, rule references, fingerprint format, uniqueness and counts are validated, and free text is truncated. An invalid report fails the job without storing anything.
 - Findings are tenant- and project-scoped like every other row; non-members get 404 on findings, symbols, graphs and annotations (tested).
 
+## Fuzzing
+
+- Fuzzing **executes** project code, so it only ever runs inside the worker sandbox (container mode in production: uid 65534, read-only root, no network, memory/CPU/pids limits). The API never loads project code.
+- Inside the sandbox each target runs in its own child process with a 256 MB V8 heap limit and a per-call timer; hangs are killed, and a function that exits the process or exhausts memory is recorded as a crash instead of ending the campaign. Target output is discarded.
+- The fuzz report is untrusted like the analysis report: oracle names, fingerprints, path and identifier shapes, re-run counts, input sizes (64 KB each) and uniqueness are validated, and text is truncated, before anything is stored.
+- The replay corpus is built by the API from the project's own reproductions; callers cannot supply corpus entries.
+
 ## Transport and headers
 
 - The API is stateless with bearer tokens only, so no cookies are issued. CSRF protection is therefore disabled deliberately.
