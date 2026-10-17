@@ -1636,6 +1636,7 @@ export interface components {
             /** Format: uuid */
             projectId: string;
             projectName: string;
+            jobType: string;
             state: string;
             /** Format: date-time */
             createdAt: string;

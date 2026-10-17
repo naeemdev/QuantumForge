@@ -128,13 +128,18 @@ class FuzzIngestion(
 
     private fun toFinding(t: FuzzTargetReport, f: FuzzFailure): FindingReport {
         val rule = RULES.getValue(f.oracle)
-        val input = Json.write(f.input).let { if (it.length > 300) it.take(297) + "..." else it }
+        val call = callLiteral(t.exportName, f.input).let { if (it.length > 200) it.take(197) + "..." else it }
+        val message = when {
+            f.oracle == "runtime-error" -> "$call threw ${f.errorName ?: "an error"}: ${f.message}"
+            f.oracle == "non-finite-result" && !f.message.startsWith("returned ") -> "$call: ${f.message}"
+            else -> "$call ${f.message}"
+        }
         return FindingReport(
             ruleId = rule.id,
             ruleVersion = rule.version,
             severity = rule.severity,
             confidence = if (evidenceOf(f) == "REPRODUCED") "high" else "medium",
-            message = "${t.exportName}: ${f.message} (input $input)",
+            message = message,
             path = t.path,
             range = SourceRange(t.line, 1, t.line, 1),
             snippet = t.signature,
@@ -144,6 +149,24 @@ class FuzzIngestion(
     }
 
     companion object {
+        /** The failing call as JavaScript, e.g. `averageUnitPrice({ lines: [] })`; reads the campaign's tagged encoding. */
+        fun callLiteral(name: String, args: List<Any?>): String = "$name(${args.joinToString(", ") { literal(it) }})"
+
+        private fun literal(value: Any?): String = when (value) {
+            null -> "null"
+            is String -> Json.write(value)
+            is List<*> -> value.joinToString(", ", "[", "]") { literal(it) }
+            is Map<*, *> -> (value["${'$'}qf"] as? String)
+                ?: if (value.isEmpty()) "{}" else value.entries.joinToString(", ", "{ ", " }") { (k, v) ->
+                    val key = k.toString()
+                    "${if (IDENTIFIER.matches(key)) key else Json.write(key)}: ${literal(v)}"
+                }
+            is Double -> if (value % 1.0 == 0.0 && kotlin.math.abs(value) < 1e15) value.toLong().toString() else value.toString()
+            else -> value.toString()
+        }
+
+        private val IDENTIFIER = Regex("^[A-Za-z_$][A-Za-z0-9_$]*$")
+
         private fun rule(id: String, name: String, severity: String, summary: String, description: String, remediation: String) =
             RuleReport(id, 1, name, summary, description, remediation, "fuzzing", severity, "high", listOf("TypeScript", "JavaScript"))
 

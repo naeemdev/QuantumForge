@@ -61,3 +61,10 @@ export type RuleView = Schemas["RuleView"];
 
 export const ACTIVE_FINDING_STATUSES: readonly FindingStatus[] = ["OPEN", "CONFIRMED", "REOPENED"];
 export const SEVERITIES = ["critical", "high", "medium", "low", "info"] as const;
+
+export type FindingSource = FindingView["source"];
+export type ReproductionView = Schemas["ReproductionView"];
+export type FuzzCampaignView = Schemas["FuzzCampaignView"];
+export type FuzzCampaignSummary = Schemas["FuzzCampaignSummary"];
+export type FuzzCampaignDetail = Schemas["FuzzCampaignDetail"];
+export type FuzzTargetView = Schemas["FuzzTargetView"];

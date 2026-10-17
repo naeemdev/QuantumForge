@@ -34,7 +34,8 @@ export function findingStatusLabel(status: string): string {
 export function EvidenceNote({ className }: { className?: string }) {
   return (
     <p className={cn("text-xs text-fg-3", className)}>
-      Static analysis findings are <span className="font-medium text-fg-2">suspected</span> issues produced by pattern rules. They are not reproduced defects.
+      Static analysis findings are <span className="font-medium text-fg-2">suspected</span> issues produced by pattern rules. Fuzzing findings were
+      executed and are <span className="font-medium text-fg-2">reproduced</span> when every fresh re-run failed the same way.
     </p>
   );
 }

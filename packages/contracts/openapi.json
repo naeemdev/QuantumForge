@@ -4229,6 +4229,9 @@
           "projectName" : {
             "type" : "string"
           },
+          "jobType" : {
+            "type" : "string"
+          },
           "state" : {
             "type" : "string"
           },
@@ -4245,7 +4248,7 @@
             "additionalProperties" : { }
           }
         },
-        "required" : [ "createdAt", "id", "projectId", "projectName", "state" ]
+        "required" : [ "createdAt", "id", "jobType", "projectId", "projectName", "state" ]
       },
       "TestTotals" : {
         "type" : "object",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TERMINAL_JOB_STATES, type JobState } from "@quantumforge/contracts";
+import { TERMINAL_JOB_STATES, type FindingSource, type JobState } from "@quantumforge/contracts";
 import { api, call } from "./api";
 import { useOrgId } from "./session";
 
@@ -74,7 +74,7 @@ export function useFileContent(snapshotId: string | undefined, path: string | un
   });
 }
 
-export function useJobs(filter: { projectId?: string; states?: JobState[]; page?: number; type?: "TEST_EXECUTION" | "STATIC_ANALYSIS" } = {}) {
+export function useJobs(filter: { projectId?: string; states?: JobState[]; page?: number; type?: "TEST_EXECUTION" | "STATIC_ANALYSIS" | "FUZZ_CAMPAIGN" } = {}) {
   const orgId = useOrgId();
   return useQuery({
     queryKey: ["jobs", orgId, filter],
@@ -124,6 +124,7 @@ export function useSubmitTestRun(projectId: string) {
               memoryMb: 512,
               cpuMillis: 1000,
               maxOutputBytes: 1048576,
+              fuzz: null,
             },
           },
         }),
@@ -228,7 +229,7 @@ export function useAnnotations(projectId: string, snapshotId: string | undefined
   });
 }
 
-export function useFindings(projectId: string | undefined, filter: { status?: string[]; severity?: string[]; ruleId?: string; q?: string; page?: number }) {
+export function useFindings(projectId: string | undefined, filter: { status?: string[]; severity?: string[]; ruleId?: string; q?: string; source?: FindingSource; page?: number; size?: number }) {
   return useQuery({
     queryKey: ["findings", projectId, filter],
     queryFn: () =>
@@ -241,8 +242,9 @@ export function useFindings(projectId: string | undefined, filter: { status?: st
               severity: filter.severity?.length ? filter.severity : undefined,
               ruleId: filter.ruleId || undefined,
               q: filter.q || undefined,
+              source: filter.source,
               page: filter.page ?? 0,
-              size: 50,
+              size: filter.size ?? 50,
             },
           },
         }),
@@ -316,5 +318,41 @@ export function useAnalysisFindings(jobId: string, enabled: boolean) {
     queryKey: ["analysis-findings", jobId],
     queryFn: () => call(api.GET("/api/v1/analyses/{id}/findings", { params: { path: { id: jobId }, query: { size: 200 } } })),
     enabled,
+  });
+}
+
+// ---- Break My Code (M3) ----
+
+export function useFuzzCampaigns(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["fuzz-campaigns", projectId],
+    queryFn: () => call(api.GET("/api/v1/projects/{projectId}/fuzz-campaigns", { params: { path: { projectId: projectId! }, query: { size: 20 } } })),
+    enabled: projectId != null,
+    refetchInterval: (query) => (query.state.data?.items.some((c) => !TERMINAL_JOB_STATES.includes(c.job.state)) ? 2000 : false),
+  });
+}
+
+export function useFuzzCampaign(jobId: string) {
+  return useQuery({
+    queryKey: ["fuzz-campaign", jobId],
+    queryFn: () => call(api.GET("/api/v1/fuzz-campaigns/{id}", { params: { path: { id: jobId } } })),
+    refetchInterval: (query) => (query.state.data && TERMINAL_JOB_STATES.includes(query.state.data.job.state) ? false : 2000),
+  });
+}
+
+export function useSubmitFuzzCampaign(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { snapshotId?: string; idempotencyKey: string; seed: number; iterationsPerTarget: number; callTimeoutMs: number }) =>
+      call(
+        api.POST("/api/v1/projects/{projectId}/fuzz-campaigns", {
+          params: { path: { projectId }, header: { "Idempotency-Key": body.idempotencyKey } },
+          body: { snapshotId: body.snapshotId, seed: body.seed, iterationsPerTarget: body.iterationsPerTarget, callTimeoutMs: body.callTimeoutMs, priority: 0 },
+        }),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["fuzz-campaigns"] });
+      void qc.invalidateQueries({ queryKey: ["jobs"] });
+    },
   });
 }

@@ -11,7 +11,7 @@ import { useSession } from "@/lib/session";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { CodeViewer } from "@/components/code-viewer";
 import { EvidenceNote, FindingStatusBadge, SeverityBadge, findingStatusLabel } from "@/components/findings";
-import { Badge } from "@/components/ui/badge";
+import { EvidenceBadge, ReproductionCard } from "@/components/fuzzing";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
@@ -52,7 +52,8 @@ export default function FindingPage() {
 
   if (detail.isPending) return <Spinner />;
   if (detail.isError) return <ErrorState error={detail.error} />;
-  const { finding, rule, occurrences, history } = detail.data;
+  const { finding, rule, occurrences, history, reproductions } = detail.data;
+  const fuzzing = finding.source === "FUZZING";
   const latest = occurrences[0];
 
   async function apply(action: Action, why?: string) {
@@ -66,7 +67,7 @@ export default function FindingPage() {
       <PageHeader
         breadcrumbs={[{ label: "Findings", href: `/findings?project=${finding.projectId}` }, ...(project.data ? [{ label: project.data.name, href: `/projects/${finding.projectId}` }] : []), { label: finding.ruleId }]}
         title={finding.message}
-        description={<span className="flex flex-wrap items-center gap-2"><SeverityBadge severity={finding.severity} /><FindingStatusBadge status={finding.status} /><Badge>Suspected · static analysis</Badge><span className="text-xs text-fg-3">{finding.confidence} confidence</span></span>}
+        description={<span className="flex flex-wrap items-center gap-2"><SeverityBadge severity={finding.severity} /><FindingStatusBadge status={finding.status} /><EvidenceBadge level={finding.evidenceLevel} source={finding.source} /><span className="text-xs text-fg-3">{finding.confidence} confidence</span></span>}
         actions={can("finding.triage") && actionsFor(finding.status).map((a) => (
           <Button key={a.status} variant={a.variant} onClick={() => (a.needsReason ? setPending(a) : void apply(a))} loading={change.isPending && !pending}>{a.label}</Button>
         ))}
@@ -93,6 +94,16 @@ export default function FindingPage() {
             )}
           </Card>
 
+          {reproductions.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-fg">Reproduction</h2>
+              {reproductions.slice(0, 1).map((r) => <ReproductionCard key={r.id} reproduction={r} expanded />)}
+              {reproductions.length > 1 && (
+                <p className="text-xs text-fg-3">Reproduced by {reproductions.length} campaigns; showing the latest.</p>
+              )}
+            </section>
+          )}
+
           <Card>
             <CardHeader title={<>{rule.name} <span className="ml-1 font-mono text-xs font-normal text-fg-3">{rule.id} v{rule.version}</span></>} description={rule.summary} />
             <CardBody className="space-y-3 text-[13px]">
@@ -106,13 +117,13 @@ export default function FindingPage() {
           </Card>
 
           <Card>
-            <CardHeader title="Occurrences" description="Each analysis that detected this finding. Original evidence is never modified." />
+            <CardHeader title="Occurrences" description={`Each ${fuzzing ? "campaign" : "analysis"} that detected this finding. Original evidence is never modified.`} />
             <Table>
-              <thead><tr><Th>Analysis</Th><Th>Location</Th><Th>Rule version</Th><Th className="text-right">Detected</Th></tr></thead>
+              <thead><tr><Th>{fuzzing ? "Campaign" : "Analysis"}</Th><Th>Location</Th><Th>Rule version</Th><Th className="text-right">Detected</Th></tr></thead>
               <tbody>
                 {occurrences.map((o) => (
                   <Tr key={o.jobId}>
-                    <Td><Link href={`/test-runs/${o.jobId}`} className="font-mono text-xs text-fg hover:underline">{o.jobId.slice(-8)}</Link></Td>
+                    <Td><Link href={fuzzing ? `/break-my-code/${o.jobId}` : `/test-runs/${o.jobId}`} className="font-mono text-xs text-fg hover:underline">{o.jobId.slice(-8)}</Link></Td>
                     <Td className="font-mono text-xs">{o.path}:{o.startLine}</Td>
                     <Td className="text-xs">v{o.ruleVersion}</Td>
                     <Td className="text-right text-xs">{formatRelative(o.createdAt)}</Td>
@@ -133,7 +144,7 @@ export default function FindingPage() {
                     {h.fromStatus ? <>{findingStatusLabel(h.fromStatus)} → </> : null}<span className="font-medium">{findingStatusLabel(h.toStatus)}</span>
                   </p>
                   {h.reason && <p className="mt-0.5 text-xs text-fg-2">“{h.reason}”</p>}
-                  <p className="mt-0.5 text-xs text-fg-3">{h.actorType === "SYSTEM" ? "Analysis" : h.actorType === "API_TOKEN" ? "API token" : "User"} · {formatDateTime(h.changedAt)}</p>
+                  <p className="mt-0.5 text-xs text-fg-3">{h.actorType === "SYSTEM" ? (fuzzing ? "Fuzz campaign" : "Analysis") : h.actorType === "API_TOKEN" ? "API token" : "User"} · {formatDateTime(h.changedAt)}</p>
                 </li>
               ))}
             </ol>
