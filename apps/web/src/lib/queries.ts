@@ -28,6 +28,7 @@ export function useProjects(q?: string, page = 0) {
 export function useProject(projectId: string) {
   return useQuery({
     queryKey: ["project", projectId],
+    enabled: !!projectId,
     queryFn: () => call(api.GET("/api/v1/projects/{id}", { params: { path: { id: projectId } } })),
   });
 }
@@ -35,6 +36,7 @@ export function useProject(projectId: string) {
 export function useRepositories(projectId: string) {
   return useQuery({
     queryKey: ["repositories", projectId],
+    enabled: !!projectId,
     queryFn: () => call(api.GET("/api/v1/projects/{id}/repositories", { params: { path: { id: projectId } } })),
   });
 }
@@ -42,6 +44,7 @@ export function useRepositories(projectId: string) {
 export function useRevisions(projectId: string) {
   return useQuery({
     queryKey: ["revisions", projectId],
+    enabled: !!projectId,
     queryFn: () => call(api.GET("/api/v1/projects/{id}/revisions", { params: { path: { id: projectId }, query: { size: 50 } } })),
   });
 }
@@ -71,12 +74,12 @@ export function useFileContent(snapshotId: string | undefined, path: string | un
   });
 }
 
-export function useJobs(filter: { projectId?: string; states?: JobState[]; page?: number } = {}) {
+export function useJobs(filter: { projectId?: string; states?: JobState[]; page?: number; type?: "TEST_EXECUTION" | "STATIC_ANALYSIS" } = {}) {
   const orgId = useOrgId();
   return useQuery({
     queryKey: ["jobs", orgId, filter],
     queryFn: () =>
-      call(api.GET("/api/v1/jobs", { params: { query: { organizationId: orgId, projectId: filter.projectId, state: filter.states, page: filter.page ?? 0, size: 50 } } })),
+      call(api.GET("/api/v1/jobs", { params: { query: { organizationId: orgId, projectId: filter.projectId, state: filter.states, type: filter.type, page: filter.page ?? 0, size: 50 } } })),
     refetchInterval: (query) => (query.state.data?.items.some((j) => !TERMINAL_JOB_STATES.includes(j.state)) ? 3000 : 15_000),
   });
 }
@@ -175,6 +178,143 @@ export function useAuditEvents(page: number, enabled: boolean) {
     queryKey: ["audit", orgId, page],
     queryFn: () =>
       call(api.GET("/api/v1/organizations/{organizationId}/audit-events", { params: { path: { organizationId: orgId }, query: { page, size: 50 } } })),
+    enabled,
+  });
+}
+
+// ---- Code intelligence (M2) ----
+
+export function useCodeIndex(projectId: string | undefined, snapshotId?: string) {
+  return useQuery({
+    queryKey: ["code-index", projectId, snapshotId ?? "latest"],
+    queryFn: () => call(api.GET("/api/v1/projects/{id}/code-index", { params: { path: { id: projectId! }, query: { snapshotId } } })),
+    enabled: projectId != null,
+    retry: false,
+  });
+}
+
+export function useSymbols(projectId: string | undefined, filter: { q?: string; kind?: string; page?: number }) {
+  return useQuery({
+    queryKey: ["symbols", projectId, filter],
+    queryFn: () =>
+      call(api.GET("/api/v1/projects/{id}/symbols", { params: { path: { id: projectId! }, query: { q: filter.q || undefined, kind: filter.kind || undefined, page: filter.page ?? 0, size: 100 } } })),
+    enabled: projectId != null,
+    retry: false,
+  });
+}
+
+export function useDependencies(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["dependencies", projectId],
+    queryFn: () => call(api.GET("/api/v1/projects/{id}/dependencies", { params: { path: { id: projectId! } } })),
+    enabled: projectId != null,
+    retry: false,
+  });
+}
+
+export function useCalls(projectId: string | undefined, symbol: string | undefined) {
+  return useQuery({
+    queryKey: ["calls", projectId, symbol],
+    queryFn: () => call(api.GET("/api/v1/projects/{id}/calls", { params: { path: { id: projectId! }, query: { symbol } } })),
+    enabled: projectId != null && symbol != null,
+  });
+}
+
+export function useAnnotations(projectId: string, snapshotId: string | undefined, path: string | undefined) {
+  return useQuery({
+    queryKey: ["annotations", projectId, snapshotId, path],
+    queryFn: () => call(api.GET("/api/v1/projects/{id}/annotations", { params: { path: { id: projectId }, query: { snapshotId: snapshotId!, path: path! } } })),
+    enabled: snapshotId != null && path != null,
+  });
+}
+
+export function useFindings(projectId: string | undefined, filter: { status?: string[]; severity?: string[]; ruleId?: string; q?: string; page?: number }) {
+  return useQuery({
+    queryKey: ["findings", projectId, filter],
+    queryFn: () =>
+      call(
+        api.GET("/api/v1/projects/{id}/findings", {
+          params: {
+            path: { id: projectId! },
+            query: {
+              status: filter.status?.length ? (filter.status as ("OPEN" | "CONFIRMED" | "FALSE_POSITIVE" | "ACCEPTED_RISK" | "FIXED" | "REOPENED")[]) : undefined,
+              severity: filter.severity?.length ? filter.severity : undefined,
+              ruleId: filter.ruleId || undefined,
+              q: filter.q || undefined,
+              page: filter.page ?? 0,
+              size: 50,
+            },
+          },
+        }),
+      ),
+    enabled: projectId != null,
+  });
+}
+
+export function useFindingCounts(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["finding-counts", projectId],
+    queryFn: () => call(api.GET("/api/v1/projects/{id}/finding-counts", { params: { path: { id: projectId! }, query: { active: true } } })),
+    enabled: projectId != null,
+  });
+}
+
+export function useFinding(findingId: string) {
+  return useQuery({
+    queryKey: ["finding", findingId],
+    queryFn: () => call(api.GET("/api/v1/findings/{id}", { params: { path: { id: findingId } } })),
+  });
+}
+
+export function useChangeFindingStatus(findingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { status: "OPEN" | "CONFIRMED" | "FALSE_POSITIVE" | "ACCEPTED_RISK"; reason?: string; version: number }) =>
+      call(api.POST("/api/v1/findings/{id}/status", { params: { path: { id: findingId } }, body })),
+    onSuccess: (detail) => {
+      qc.setQueryData(["finding", findingId], detail);
+      void qc.invalidateQueries({ queryKey: ["findings"] });
+      void qc.invalidateQueries({ queryKey: ["finding-counts"] });
+    },
+  });
+}
+
+export function useSubmitAnalysis(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { snapshotId?: string; idempotencyKey: string }) =>
+      call(
+        api.POST("/api/v1/projects/{projectId}/analyses", {
+          params: { path: { projectId }, header: { "Idempotency-Key": body.idempotencyKey } },
+          body: { snapshotId: body.snapshotId, priority: 0 },
+        }),
+      ),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["jobs"] }),
+  });
+}
+
+export function useAnalysisJobs(projectId: string | undefined) {
+  const orgId = useOrgId();
+  return useQuery({
+    queryKey: ["jobs", orgId, { projectId, type: "STATIC_ANALYSIS" }],
+    queryFn: () => call(api.GET("/api/v1/jobs", { params: { query: { organizationId: orgId, projectId, type: "STATIC_ANALYSIS", size: 20 } } })),
+    enabled: projectId != null,
+    refetchInterval: (query) => (query.state.data?.items.some((j) => !TERMINAL_JOB_STATES.includes(j.state)) ? 2000 : false),
+  });
+}
+
+export function useAnalysis(jobId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["analysis", jobId],
+    queryFn: () => call(api.GET("/api/v1/analyses/{id}", { params: { path: { id: jobId } } })),
+    enabled,
+  });
+}
+
+export function useAnalysisFindings(jobId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["analysis-findings", jobId],
+    queryFn: () => call(api.GET("/api/v1/analyses/{id}/findings", { params: { path: { id: jobId }, query: { size: 200 } } })),
     enabled,
   });
 }

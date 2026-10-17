@@ -2,12 +2,15 @@
   "name": "quantumforge",
   "private": true,
   "packageManager": "pnpm@10.18.3",
-  "engines": { "node": ">=22.6" },
+  "engines": {
+    "node": ">=22.6"
+  },
   "scripts": {
     "contracts:generate": "pnpm --filter @quantumforge/contracts generate",
     "web:dev": "pnpm --filter @quantumforge/web dev",
     "web:build": "pnpm --filter @quantumforge/web build",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "analyzer:test": "pnpm --filter @quantumforge/lang-typescript test"
   }
 }

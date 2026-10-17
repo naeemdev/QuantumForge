@@ -30,7 +30,7 @@ function TestRuns() {
   const [filterIndex, setFilterIndex] = useState(0);
   const [page, setPage] = useState(0);
   const projects = useProjects(undefined, 0);
-  const jobs = useJobs({ projectId: projectId || undefined, states: filters[filterIndex]?.states, page });
+  const jobs = useJobs({ projectId: projectId || undefined, states: filters[filterIndex]?.states, page, type: "TEST_EXECUTION" });
   const projectName = (id: string) => projects.data?.items.find((p) => p.id === id)?.name ?? id.slice(-8);
 
   return (

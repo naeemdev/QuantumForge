@@ -9,7 +9,7 @@
     "version" : "v1"
   },
   "servers" : [ {
-    "url" : "http://localhost:39679",
+    "url" : "http://localhost:42577",
     "description" : "Generated server url"
   } ],
   "security" : [ {
@@ -225,6 +225,50 @@
             "application/json" : {
               "schema" : {
                 "$ref" : "#/components/schemas/SubmitTestRunRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Job"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/analyses" : {
+      "post" : {
+        "tags" : [ "Code intelligence" ],
+        "summary" : "Queue a static analysis of a snapshot (defaults to the latest). Supports Idempotency-Key.",
+        "operationId" : "submit",
+        "parameters" : [ {
+          "name" : "projectId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SubmitAnalysisRequest"
               }
             }
           }
@@ -547,6 +591,43 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/OrganizationView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/findings/{id}/status" : {
+      "post" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "changeStatus",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FindingStatusRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FindingDetail"
                 }
               }
             }
@@ -955,6 +1036,27 @@
         }
       }
     },
+    "/api/v1/rules" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "rules",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/RuleView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/roles" : {
       "get" : {
         "tags" : [ "Identity" ],
@@ -1000,6 +1102,78 @@
         }
       }
     },
+    "/api/v1/projects/{id}/symbols" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "symbols",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "snapshotId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "q",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "kind",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageCodeSymbolView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{id}/revisions" : {
       "get" : {
         "tags" : [ "Source" ],
@@ -1036,6 +1210,126 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PageSnapshot"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/findings" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "projectFindings",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED_RISK", "FIXED", "REOPENED" ]
+            }
+          }
+        }, {
+          "name" : "severity",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "name" : "ruleId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "q",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageFindingView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/finding-counts" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "projectFindingCounts",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "active",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : true
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FindingCounts"
                 }
               }
             }
@@ -1094,6 +1388,163 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PageSourceFile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/dependencies" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "dependencies",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "snapshotId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DependencyGraph"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/code-index" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "index",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "snapshotId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CodeIndexView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/calls" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "calls",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "snapshotId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "symbol",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/CallEdgeView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/annotations" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "annotations",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "snapshotId",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "path",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileAnnotations"
                 }
               }
             }
@@ -1292,6 +1743,14 @@
               "type" : "string",
               "enum" : [ "QUEUED", "LEASED", "RUNNING", "SUCCEEDED", "FAILED", "TIMED_OUT", "CANCELLED", "INFRA_ERROR" ]
             }
+          }
+        }, {
+          "name" : "type",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS" ]
           }
         }, {
           "name" : "page",
@@ -1528,6 +1987,33 @@
         }
       }
     },
+    "/api/v1/findings/{id}" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "finding",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FindingDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/config" : {
       "get" : {
         "tags" : [ "Identity" ],
@@ -1539,6 +2025,106 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/AuthConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analyses/{id}" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "get_2",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AnalysisDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analyses/{id}/findings" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "analysisFindings",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageFindingOccurrenceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analyses/{id}/artifacts" : {
+      "get" : {
+        "tags" : [ "Code intelligence" ],
+        "operationId" : "artifacts_1",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/JobArtifact"
+                  }
                 }
               }
             }
@@ -1773,30 +2359,12 @@
         },
         "required" : [ "createdAt", "createdBy", "id", "name", "organizationId", "slug", "status", "updatedAt", "updatedBy", "version", "workspaceId" ]
       },
-      "SubmitTestRunRequest" : {
-        "type" : "object",
-        "properties" : {
-          "snapshotId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "config" : {
-            "$ref" : "#/components/schemas/TestExecutionConfig"
-          },
-          "priority" : {
-            "type" : "integer",
-            "format" : "int32",
-            "maximum" : 100,
-            "minimum" : -100
-          }
-        }
-      },
-      "TestExecutionConfig" : {
+      "ExecutionConfig" : {
         "type" : "object",
         "properties" : {
           "preset" : {
             "type" : "string",
-            "enum" : [ "NODE_TEST" ]
+            "enum" : [ "NODE_TEST", "TS_ANALYSIS" ]
           },
           "testPatterns" : {
             "type" : "array",
@@ -1823,6 +2391,24 @@
         },
         "required" : [ "cpuMillis", "maxOutputBytes", "memoryMb", "preset", "testPatterns" ]
       },
+      "SubmitTestRunRequest" : {
+        "type" : "object",
+        "properties" : {
+          "snapshotId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "config" : {
+            "$ref" : "#/components/schemas/ExecutionConfig"
+          },
+          "priority" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 100,
+            "minimum" : -100
+          }
+        }
+      },
       "Job" : {
         "type" : "object",
         "properties" : {
@@ -1844,7 +2430,7 @@
           },
           "jobType" : {
             "type" : "string",
-            "enum" : [ "TEST_EXECUTION" ]
+            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS" ]
           },
           "state" : {
             "type" : "string",
@@ -1855,7 +2441,7 @@
             "format" : "int32"
           },
           "config" : {
-            "$ref" : "#/components/schemas/TestExecutionConfig"
+            "$ref" : "#/components/schemas/ExecutionConfig"
           },
           "idempotencyKey" : {
             "type" : [ "string", "null" ]
@@ -1912,6 +2498,27 @@
           }
         },
         "required" : [ "attemptCount", "cancelRequested", "config", "createdAt", "createdBy", "id", "jobType", "maxAttempts", "organizationId", "priority", "projectId", "queuedAt", "snapshotId", "state", "timeoutSeconds", "updatedAt", "version" ]
+      },
+      "SubmitAnalysisRequest" : {
+        "type" : "object",
+        "properties" : {
+          "snapshotId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "timeoutSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "maximum" : 1800,
+            "minimum" : 1
+          },
+          "priority" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 100,
+            "minimum" : -100
+          }
+        }
       },
       "CreateRepositoryRequest" : {
         "type" : "object",
@@ -2160,6 +2767,264 @@
           }
         },
         "required" : [ "token" ]
+      },
+      "FindingStatusRequest" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string",
+            "enum" : [ "OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED_RISK", "FIXED", "REOPENED" ]
+          },
+          "reason" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "status" ]
+      },
+      "FindingDetail" : {
+        "type" : "object",
+        "properties" : {
+          "finding" : {
+            "$ref" : "#/components/schemas/FindingView"
+          },
+          "rule" : {
+            "$ref" : "#/components/schemas/RuleView"
+          },
+          "occurrences" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FindingOccurrenceView"
+            }
+          },
+          "history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StatusChange"
+            }
+          }
+        },
+        "required" : [ "finding", "history", "occurrences", "rule" ]
+      },
+      "FindingOccurrenceView" : {
+        "type" : "object",
+        "properties" : {
+          "findingId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "jobId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "snapshotId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "ruleId" : {
+            "type" : "string"
+          },
+          "ruleVersion" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED_RISK", "FIXED", "REOPENED" ]
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "startLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "startColumn" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "endLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "endColumn" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "snippet" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "createdAt", "endColumn", "endLine", "findingId", "jobId", "message", "path", "ruleId", "ruleVersion", "severity", "snapshotId", "snippet", "startColumn", "startLine", "status" ]
+      },
+      "FindingView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "ruleId" : {
+            "type" : "string"
+          },
+          "ruleName" : {
+            "type" : "string"
+          },
+          "ruleVersion" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "confidence" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED_RISK", "FIXED", "REOPENED" ]
+          },
+          "evidenceLevel" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "symbolKey" : {
+            "type" : [ "string", "null" ]
+          },
+          "startLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "endLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "snippet" : {
+            "type" : "string"
+          },
+          "firstSeenAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lastSeenAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lastSeenJobId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "lastSeenSnapshotId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "resolvedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "category", "confidence", "endLine", "evidenceLevel", "firstSeenAt", "id", "lastSeenAt", "lastSeenJobId", "lastSeenSnapshotId", "message", "path", "projectId", "ruleId", "ruleName", "ruleVersion", "severity", "snippet", "startLine", "status", "version" ]
+      },
+      "RuleView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "languages" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "summary" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "remediation" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "confidence" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "category", "confidence", "description", "id", "languages", "name", "remediation", "severity", "summary", "version" ]
+      },
+      "StatusChange" : {
+        "type" : "object",
+        "properties" : {
+          "fromStatus" : {
+            "type" : [ "string", "null" ]
+          },
+          "toStatus" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          },
+          "actorType" : {
+            "type" : "string"
+          },
+          "actorId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "jobId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "changedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "actorType", "changedAt", "toStatus" ]
       },
       "DevSessionRequest" : {
         "type" : "object",
@@ -2467,6 +3332,70 @@
         },
         "required" : [ "items", "page", "size", "total" ]
       },
+      "CodeSymbolView" : {
+        "type" : "object",
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "container" : {
+            "type" : [ "string", "null" ]
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "startLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "endLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "exported" : {
+            "type" : "boolean"
+          },
+          "complexity" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "signature" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "endLine", "exported", "key", "kind", "name", "path", "startLine" ]
+      },
+      "PageCodeSymbolView" : {
+        "type" : "object",
+        "description" : "A page of results",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CodeSymbolView"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "items", "page", "size", "total" ]
+      },
       "PageSnapshot" : {
         "type" : "object",
         "description" : "A page of results",
@@ -2491,6 +3420,263 @@
           }
         },
         "required" : [ "items", "page", "size", "total" ]
+      },
+      "PageFindingView" : {
+        "type" : "object",
+        "description" : "A page of results",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FindingView"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "items", "page", "size", "total" ]
+      },
+      "FindingCounts" : {
+        "type" : "object",
+        "properties" : {
+          "bySeverity" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          },
+          "byStatus" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          },
+          "byRule" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          }
+        },
+        "required" : [ "byRule", "bySeverity", "byStatus" ]
+      },
+      "DependencyEdge" : {
+        "type" : "object",
+        "properties" : {
+          "from" : {
+            "type" : "string"
+          },
+          "to" : {
+            "type" : "string"
+          },
+          "count" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "count", "from", "to" ]
+      },
+      "DependencyGraph" : {
+        "type" : "object",
+        "properties" : {
+          "indexId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "nodes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DependencyNode"
+            }
+          },
+          "edges" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DependencyEdge"
+            }
+          },
+          "external" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ExternalDependency"
+            }
+          },
+          "unresolved" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "edges", "external", "indexId", "nodes", "unresolved" ]
+      },
+      "DependencyNode" : {
+        "type" : "object",
+        "properties" : {
+          "path" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "lineCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "symbolCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "openFindings" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "fanIn" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "fanOut" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "fanIn", "fanOut", "language", "lineCount", "openFindings", "path", "symbolCount" ]
+      },
+      "ExternalDependency" : {
+        "type" : "object",
+        "properties" : {
+          "packageName" : {
+            "type" : "string"
+          },
+          "importedBy" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "importedBy", "packageName" ]
+      },
+      "CodeIndexView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "snapshotId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "jobId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "adapterId" : {
+            "type" : "string"
+          },
+          "adapterVersion" : {
+            "type" : "string"
+          },
+          "toolchain" : {
+            "type" : "string"
+          },
+          "capabilities" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "limitations" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "stats" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "fileCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "symbolCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "importCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "callCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "adapterId", "adapterVersion", "callCount", "capabilities", "createdAt", "fileCount", "id", "importCount", "jobId", "limitations", "snapshotId", "stats", "symbolCount", "toolchain" ]
+      },
+      "CallEdgeView" : {
+        "type" : "object",
+        "properties" : {
+          "from" : {
+            "type" : "string"
+          },
+          "to" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "line" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "from", "line", "path", "to" ]
+      },
+      "FileAnnotations" : {
+        "type" : "object",
+        "properties" : {
+          "path" : {
+            "type" : "string"
+          },
+          "indexId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "symbols" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CodeSymbolView"
+            }
+          },
+          "findings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FindingOccurrenceView"
+            }
+          },
+          "diagnostics" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "additionalProperties" : { }
+            }
+          }
+        },
+        "required" : [ "diagnostics", "findings", "path", "symbols" ]
       },
       "PageOrganizationView" : {
         "type" : "object",
@@ -2568,6 +3754,13 @@
           "testTotals" : {
             "$ref" : "#/components/schemas/TestTotals"
           },
+          "openFindings" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          },
           "recentJobs" : {
             "type" : "array",
             "items" : {
@@ -2581,7 +3774,7 @@
             }
           }
         },
-        "required" : [ "activeJobLimit", "activeJobs", "jobsByState", "projectCount", "recentActivity", "recentJobs", "snapshotCount", "testTotals" ]
+        "required" : [ "activeJobLimit", "activeJobs", "jobsByState", "openFindings", "projectCount", "recentActivity", "recentJobs", "snapshotCount", "testTotals" ]
       },
       "RecentJob" : {
         "type" : "object",
@@ -3072,6 +4265,60 @@
           }
         },
         "required" : [ "devLoginEnabled" ]
+      },
+      "AnalysisDetail" : {
+        "type" : "object",
+        "properties" : {
+          "job" : {
+            "$ref" : "#/components/schemas/Job"
+          },
+          "attempts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JobAttempt"
+            }
+          },
+          "index" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/CodeIndexView"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "findings" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/FindingCounts"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "attempts", "findings", "index", "job" ]
+      },
+      "PageFindingOccurrenceView" : {
+        "type" : "object",
+        "description" : "A page of results",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FindingOccurrenceView"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "items", "page", "size", "total" ]
       }
     },
     "securitySchemes" : {
