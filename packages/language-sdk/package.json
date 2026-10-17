@@ -1,0 +1,10 @@
+{
+  "name": "@quantumforge/language-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Contract between QuantumForge and language adapters: the analysis report format and capability declarations.",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "devDependencies": { "typescript": "5.9.3" }
+}

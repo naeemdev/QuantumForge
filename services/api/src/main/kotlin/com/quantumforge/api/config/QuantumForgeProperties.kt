@@ -72,7 +72,7 @@ data class QuantumForgeProperties(
         val reaperInterval: Duration = Duration.ofSeconds(15),
         val defaultTimeoutSeconds: Int = 300,
         val maxTimeoutSeconds: Int = 1800,
-        val maxArtifactBytes: Long = 8L * 1024 * 1024,
+        val maxArtifactBytes: Long = 32L * 1024 * 1024,
         val maxTestResults: Int = 5000,
         /** Workers registered at startup: name, isolation mode and token. */
         val bootstrapWorkers: List<BootstrapWorker> = emptyList(),

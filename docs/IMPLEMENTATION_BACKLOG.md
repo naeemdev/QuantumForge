@@ -109,4 +109,36 @@ Milestone 1 broken into tasks, in dependency order. Status: ✅ done · 🔶 par
 | N7 | Encrypted private Git credentials | Envelope encryption, scoped, redacted |
 | N8 | Dependency scanning in CI | Gradle and pnpm |
 | N9 | CLI (`apps/cli`) | Submit runs, wait, exit code for CI gates |
-| N10 | M2: TypeScript adapter contract and indexer | Language adapter interface with declared capabilities |
+| N10 | ✅ M2: TypeScript adapter contract and indexer | Done; see M2 tasks below |
+| N11 | Persist the project's tsconfig options in analysis | Path aliases and project strictness currently ignored |
+| N12 | Semantic diagnostics as findings (opt-in) | Needs dependency type information to avoid noise |
+| N13 | Held-out evaluation corpus for rules | Measure precision/recall on samples rule authors have not seen |
+| N14 | Interactive dependency graph view | Table + side panel today; WebGL graph is M6 |
+
+---
+
+## Milestone 2 — Code intelligence
+
+### M2-T1 ✅ Language adapter contract
+- **Files:** `packages/language-sdk/src/index.ts`
+- **Details:** Report schema v1 (files, symbols, imports, calls, rules, findings, stats) and capability levels.
+
+### M2-T2 ✅ TypeScript adapter
+- **Files:** `language-packs/typescript/src/**`
+- **Details:** Compiler-API program with fixed options; symbols, complexity, resolved imports, call graph, syntax diagnostics; nine versioned rules; content fingerprints.
+- **Tests:** `language-packs/typescript/test` (15): per-rule positive/negative cases, indexing, graph resolution, fingerprint stability, corpus before/after fixes.
+
+### M2-T3 ✅ Analysis job and worker integration
+- **Files:** `jobs/JobModels.kt`, `services/worker/**/JobRunner.kt`, sandboxes (tool mounts)
+- **Details:** `STATIC_ANALYSIS` job type with `TS_ANALYSIS` preset; analyzer mounted read-only into container sandboxes.
+
+### M2-T4 ✅ Report ingestion and finding lifecycle
+- **Files:** `V4__code_intelligence.sql`, `analysis/ReportIngestion.kt`, `analysis/AnalysisReport.kt`
+- **Tests:** `CodeIntelligenceTest` (lifecycle across five snapshots, triage, tenant isolation, viewer permissions).
+
+### M2-T5 ✅ Code intelligence API
+- **Files:** `analysis/CodeIntelligenceService.kt`, `analysis/FindingService.kt`, `analysis/AnalysisController.kt`
+
+### M2-T6 ✅ UI
+- **Files:** `apps/web/src/app/(app)/code-intelligence`, `findings`, `findings/[findingId]`, source viewer, run page
+- **Details:** Self-hosted Monaco viewer with finding markers and outline; symbol search with callers/callees; dependency table; findings explorer and triage with reasons.

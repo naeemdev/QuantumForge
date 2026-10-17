@@ -32,16 +32,17 @@ import java.time.Instant
 import java.util.UUID
 
 data class SubmitJobCommand(
+    val jobType: JobType,
     val projectId: UUID,
     val snapshotId: UUID?,
-    val config: TestExecutionConfig,
+    val config: ExecutionConfig,
     val priority: Int,
     val idempotencyKey: String?,
 )
 
 data class SubmitResult(val job: Job, val created: Boolean)
 
-data class JobFilter(val projectId: UUID?, val states: List<JobState>)
+data class JobFilter(val projectId: UUID?, val states: List<JobState>, val jobType: JobType? = null)
 
 @Service
 class JobService(
@@ -73,8 +74,11 @@ class JobService(
         if (command.priority !in -100..100) throw BadRequestException("invalid_priority", "priority must be between -100 and 100")
 
         val config = command.config.validated(properties.execution.maxTimeoutSeconds)
+        if (config.preset.name !in command.jobType.presets) {
+            throw BadRequestException("invalid_preset", "Preset ${config.preset} cannot run a ${command.jobType} job", mapOf("allowed" to command.jobType.presets))
+        }
         val timeout = config.timeoutSeconds ?: properties.execution.defaultTimeoutSeconds
-        val requestHash = Hashing.sha256Hex(Json.write(mapOf("project" to project.id, "snapshot" to snapshot.id, "config" to config, "priority" to command.priority)).toByteArray())
+        val requestHash = Hashing.sha256Hex(Json.write(mapOf("type" to command.jobType, "project" to project.id, "snapshot" to snapshot.id, "config" to config, "priority" to command.priority)).toByteArray())
 
         val maxActive = jdbc.sql("SELECT max_active_jobs FROM tenants WHERE id = :id FOR UPDATE").param("id", ctx.tenantId).query(Int::class.java).single()
 
@@ -103,15 +107,15 @@ class JobService(
             INSERT INTO analysis_jobs (id, tenant_id, organization_id, project_id, snapshot_id, job_type, state, priority, config,
                                        idempotency_key, request_hash, max_attempts, timeout_seconds, queued_at,
                                        created_at, created_by, updated_at, updated_by)
-            VALUES (:id, :tenant, :org, :project, :snap, 'TEST_EXECUTION', 'QUEUED', :priority, CAST(:config AS jsonb),
+            VALUES (:id, :tenant, :org, :project, :snap, :type, 'QUEUED', :priority, CAST(:config AS jsonb),
                     :key, :hash, 3, :timeout, :now, :now, :user, :now, :user)
             """,
         ).param("id", id).param("tenant", ctx.tenantId).param("org", ctx.organizationId).param("project", project.id)
-            .param("snap", snapshot.id).param("priority", command.priority).param("config", Json.write(config))
+            .param("snap", snapshot.id).param("type", command.jobType.name).param("priority", command.priority).param("config", Json.write(config))
             .param("key", command.idempotencyKey).param("hash", requestHash).param("timeout", timeout)
             .param("now", now.sql()).param("user", ctx.userId).update()
         events.append(ctx.tenantId, id, null, "job.queued", "Job queued", mapOf("snapshotId" to snapshot.id, "preset" to config.preset.name))
-        audit.record(ctx, "job.submitted", "job", id, mapOf("projectId" to project.id, "snapshotId" to snapshot.id, "type" to "TEST_EXECUTION"))
+        audit.record(ctx, "job.submitted", "job", id, mapOf("projectId" to project.id, "snapshotId" to snapshot.id, "type" to command.jobType.name))
         return SubmitResult(get(ctx, id), true)
     }
 
@@ -125,10 +129,12 @@ class JobService(
             append("tenant_id = :tenant AND organization_id = :org")
             if (filter.projectId != null) append(" AND project_id = :project")
             if (filter.states.isNotEmpty()) append(" AND state IN (:states)")
+            if (filter.jobType != null) append(" AND job_type = :jobType")
         }
         fun bind(stmt: JdbcClient.StatementSpec) = stmt.param("tenant", ctx.tenantId).param("org", ctx.organizationId).apply {
             if (filter.projectId != null) param("project", filter.projectId)
             if (filter.states.isNotEmpty()) param("states", filter.states.map { it.name })
+            if (filter.jobType != null) param("jobType", filter.jobType.name)
         }
         val items = bind(jdbc.sql("SELECT * FROM analysis_jobs WHERE $where ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset"))
             .param("limit", page.size).param("offset", page.offset).query(::mapJob).list()
@@ -250,7 +256,7 @@ class JobService(
             jobType = JobType.valueOf(rs.getString("job_type")),
             state = JobState.valueOf(rs.getString("state")),
             priority = rs.getInt("priority"),
-            config = Json.read<TestExecutionConfig>(rs.getString("config")),
+            config = Json.read<ExecutionConfig>(rs.getString("config")),
             idempotencyKey = rs.getString("idempotency_key"),
             maxAttempts = rs.getInt("max_attempts"),
             attemptCount = rs.getInt("attempt_count"),

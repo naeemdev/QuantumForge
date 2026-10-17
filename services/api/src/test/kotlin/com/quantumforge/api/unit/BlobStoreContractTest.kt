@@ -50,7 +50,7 @@ class BlobStoreContractTest {
         assertFailsWith<IllegalArgumentException> { store.open("../outside") }
     }
 
-    /** Runs when QF_TEST_S3_ENDPOINT points at an S3-compatible server (CI uses MinIO). */
+    /** Runs when QF_TEST_S3_ENDPOINT points at an S3-compatible server (CI uses Adobe S3Mock). */
     @Test
     fun `s3 store honours the contract`() {
         val endpoint = System.getenv("QF_TEST_S3_ENDPOINT")

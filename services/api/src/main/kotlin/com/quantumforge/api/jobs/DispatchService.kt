@@ -1,5 +1,9 @@
 package com.quantumforge.api.jobs
 
+import com.quantumforge.api.analysis.IngestionSummary
+import com.quantumforge.api.analysis.IngestionTarget
+import com.quantumforge.api.analysis.InvalidReportException
+import com.quantumforge.api.analysis.ReportIngestion
 import com.quantumforge.api.audit.AuditActor
 import com.quantumforge.api.audit.AuditService
 import com.quantumforge.api.common.BadRequestException
@@ -37,7 +41,7 @@ data class LeasedJob(
     val heartbeatIntervalSeconds: Long,
     val jobId: UUID,
     val jobType: JobType,
-    val config: TestExecutionConfig,
+    val config: ExecutionConfig,
     val testPatterns: List<String>,
     val timeoutSeconds: Int,
     val snapshotDigest: String,
@@ -68,6 +72,7 @@ class DispatchService(
     private val workers: WorkerRegistry,
     private val events: JobEventWriter,
     private val tests: TestResultStore,
+    private val ingestion: ReportIngestion,
     private val blobs: BlobStore,
     private val audit: AuditService,
     private val properties: QuantumForgeProperties,
@@ -88,6 +93,9 @@ class DispatchService(
         val cancelRequested: Boolean,
         val startedAt: Instant?,
         val timeoutSeconds: Int,
+        val jobType: JobType,
+        val projectId: UUID,
+        val snapshotId: UUID,
     ) {
         val isCurrent get() = attemptNumber == attemptCount
     }
@@ -136,7 +144,7 @@ class DispatchService(
         val snap = jdbc.sql("SELECT content_digest, archive_size FROM source_snapshots WHERE id = :id AND tenant_id = :tenant")
             .param("id", candidate.snapshotId).param("tenant", candidate.tenantId)
             .query { rs, _ -> Snap(rs.getString("content_digest"), rs.getLong("archive_size")) }.single()
-        val config = Json.read<TestExecutionConfig>(candidate.config)
+        val config = Json.read<ExecutionConfig>(candidate.config)
         log.info("Job {} leased to {} as attempt {}", candidate.id, worker.name, attemptNumber)
         return LeasedJob(
             attemptId = attemptId,
@@ -204,7 +212,7 @@ class DispatchService(
         content: InputStream,
     ): UUID {
         if (!Regex("^[A-Za-z0-9._-]{1,100}$").matches(name) || name.startsWith(".")) throw BadRequestException("invalid_name", "Invalid artifact name")
-        if (kind !in setOf("STDOUT", "STDERR", "JUNIT_XML", "ENVIRONMENT", "OTHER")) throw BadRequestException("invalid_kind", "Invalid artifact kind")
+        if (kind !in setOf("STDOUT", "STDERR", "JUNIT_XML", "ENVIRONMENT", "ANALYSIS_REPORT", "OTHER")) throw BadRequestException("invalid_kind", "Invalid artifact kind")
         if (!Regex("^[a-z]+/[a-z0-9.+-]+$").matches(mediaType)) throw BadRequestException("invalid_media_type", "Invalid media type")
         val ctx = requireLease(worker, attemptId, token, lock = false)
         val existing = jdbc.sql("SELECT id FROM job_artifacts WHERE attempt_id = :a AND name = :n").param("a", attemptId).param("n", name)
@@ -257,7 +265,8 @@ class DispatchService(
     }
 
     @Transactional
-    fun complete(worker: WorkerIdentity, attemptId: UUID, token: String, report: CompletionReport): CompletionResult {
+    fun complete(worker: WorkerIdentity, attemptId: UUID, token: String, workerReport: CompletionReport): CompletionResult {
+        var report = workerReport
         if (report.outcome == AttemptOutcome.LEASE_EXPIRED) throw BadRequestException("invalid_outcome", "Workers cannot report LEASE_EXPIRED")
         val ctx = requireLease(worker, attemptId, token, allowFinished = true)
         if (ctx.outcome != null) {
@@ -269,6 +278,21 @@ class DispatchService(
 
         val now = Instant.now(clock)
         val testCounts = report.testRun?.let { tests.save(ctx.tenantId, ctx.jobId, attemptId, it, properties.execution.maxTestResults) }
+
+        // An analysis only succeeds if its report is valid and stored with the job.
+        var analysisSummary: IngestionSummary? = null
+        if (ctx.jobType == JobType.STATIC_ANALYSIS && report.outcome == AttemptOutcome.SUCCEEDED) {
+            try {
+                val analysisReport = ingestion.loadReport(attemptId, properties.execution.maxArtifactBytes)
+                analysisSummary = ingestion.ingest(
+                    IngestionTarget(ctx.tenantId, ctx.organizationId, ctx.projectId, ctx.snapshotId, ctx.jobId, attemptId),
+                    analysisReport,
+                )
+            } catch (e: InvalidReportException) {
+                log.warn("Rejected analysis report for job {}: {}", ctx.jobId, e.message)
+                report = report.copy(outcome = AttemptOutcome.FAILED, errorMessage = "Invalid analysis report: ${e.message}")
+            }
+        }
 
         jdbc.sql(
             """
@@ -289,6 +313,7 @@ class DispatchService(
             "exitCode" to report.exitCode,
             "durationMs" to report.durationMs,
             "tests" to testCounts,
+            "analysis" to analysisSummary,
             "worker" to worker.name,
             "isolationMode" to worker.isolationMode,
         )
@@ -329,7 +354,8 @@ class DispatchService(
         val row = jdbc.sql(
             """
             SELECT a.id, a.tenant_id, a.job_id, a.attempt_number, a.outcome, a.worker_id, a.lease_token_hash,
-                   j.organization_id, j.state, j.attempt_count, j.max_attempts, j.cancel_requested, j.started_at, j.timeout_seconds
+                   j.organization_id, j.state, j.attempt_count, j.max_attempts, j.cancel_requested, j.started_at, j.timeout_seconds,
+                   j.job_type, j.project_id, j.snapshot_id
             FROM job_attempts a JOIN analysis_jobs j ON j.id = a.job_id AND j.tenant_id = a.tenant_id
             WHERE a.id = :id $lockClause
             """,
@@ -348,6 +374,9 @@ class DispatchService(
                     cancelRequested = rs.getBoolean("cancel_requested"),
                     startedAt = rs.instantOrNull("started_at"),
                     timeoutSeconds = rs.getInt("timeout_seconds"),
+                    jobType = JobType.valueOf(rs.getString("job_type")),
+                    projectId = rs.uuid("project_id"),
+                    snapshotId = rs.uuid("snapshot_id"),
                 ),
                 rs.uuid("worker_id"),
                 rs.getBytes("lease_token_hash"),

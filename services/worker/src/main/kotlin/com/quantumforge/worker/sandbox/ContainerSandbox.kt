@@ -35,7 +35,7 @@ class ContainerSandbox(
     )
 
     override fun run(spec: ExecutionSpec, shouldStop: () -> Boolean): ExecutionResult {
-        val paths = SandboxPaths("/work/src", "/work/out")
+        val paths = SandboxPaths("/work/src", "/work/out", spec.tools.keys.associateWith { "/opt/qf/tools/$it" })
         val inner = spec.command(paths)
         val name = "qf-job-" + UUID.randomUUID().toString().take(12)
         val cpus = "%.2f".format(spec.cpuMillis / 1000.0)
@@ -46,6 +46,7 @@ class ContainerSandbox(
             addAll(listOf("--pids-limit", "256", "--memory", "${spec.memoryMb}m", "--memory-swap", "${spec.memoryMb}m", "--cpus", cpus))
             addAll(listOf("--user", "65534:65534", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m"))
             addAll(listOf("-v", "${spec.sourceDir}:/work/src:ro", "-v", "${spec.outputDir}:/work/out:rw", "-w", "/work/src"))
+            spec.tools.forEach { (name, hostPath) -> addAll(listOf("-v", "$hostPath:/opt/qf/tools/$name:ro")) }
             addAll(listOf("-e", "HOME=/tmp", "-e", "TMPDIR=/tmp", "-e", "TZ=UTC", "-e", "LANG=C.UTF-8"))
             spec.environment.forEach { (k, v) -> addAll(listOf("-e", "$k=$v")) }
             add(image)

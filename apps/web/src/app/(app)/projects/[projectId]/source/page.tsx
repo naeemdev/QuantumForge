@@ -6,7 +6,10 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, File, Folder } from "lucide-react";
 import type { SourceFile } from "@quantumforge/contracts";
 import { api, call } from "@/lib/api";
-import { useFileContent, useProject } from "@/lib/queries";
+import Link from "next/link";
+import { useAnnotations, useFileContent, useProject } from "@/lib/queries";
+import { CodeViewer } from "@/components/code-viewer";
+import { SeverityBadge } from "@/components/findings";
 import { formatBytes, shortDigest } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -83,31 +86,55 @@ function TreeView({ node, depth, selected, onSelect, open, toggle }: {
   );
 }
 
-function CodeView({ snapshotId, path }: { snapshotId: string; path: string }) {
+function CodeView({ projectId, snapshotId, path, line }: { projectId: string; snapshotId: string; path: string; line?: number }) {
   const content = useFileContent(snapshotId, path);
+  const annotations = useAnnotations(projectId, snapshotId, path);
+  const router = useRouter();
   if (content.isPending) return <Spinner />;
   if (content.isError) return <div className="p-4"><ErrorState error={content.error} /></div>;
-  const lines = content.data.content.split("\n");
-  if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+  const findings = annotations.data?.findings ?? [];
+  const symbols = annotations.data?.symbols ?? [];
+  const lines = content.data.content.split("\n").length;
+  const goTo = (n: number) => router.replace(`/projects/${projectId}/source?snapshot=${snapshotId}&path=${encodeURIComponent(path)}&line=${n}`);
   return (
     <div>
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <p className="truncate font-mono text-xs text-fg">{path}</p>
         <p className="shrink-0 text-xs text-fg-3">
-          {content.data.language ?? "Plain text"} · {lines.length} lines · {formatBytes(content.data.sizeBytes)}
+          {content.data.language ?? "Plain text"} · {lines} lines · {formatBytes(content.data.sizeBytes)}
+          {annotations.data?.indexId ? ` · ${findings.length} ${findings.length === 1 ? "finding" : "findings"}` : " · not analysed"}
         </p>
       </div>
-      <div className="overflow-auto">
-        <table className="w-full border-collapse font-mono text-xs leading-5">
-          <tbody>
-            {lines.map((line, i) => (
-              <tr key={i} id={`L${i + 1}`} className="hover:bg-surface-hover/60">
-                <td className="w-12 select-none border-r border-border pr-3 text-right align-top text-fg-3">{i + 1}</td>
-                <td className="whitespace-pre pl-4 pr-4 text-fg">{line || " "}</td>
-              </tr>
+      <div className="grid grid-cols-[1fr_15rem]">
+        <CodeViewer
+          value={content.data.content}
+          language={content.data.language}
+          path={`${snapshotId}/${path}`}
+          revealLine={line}
+          markers={findings.map((f) => ({ startLine: f.startLine, startColumn: f.startColumn, endLine: f.endLine, endColumn: f.endColumn, message: `${f.ruleId}: ${f.message}`, severity: f.severity }))}
+        />
+        <div className="max-h-[70vh] overflow-auto border-l border-border">
+          {findings.length > 0 && (
+            <div className="border-b border-border p-2">
+              <p className="px-1 pb-1 text-[11px] font-medium uppercase tracking-wide text-fg-3">Findings</p>
+              {findings.map((f) => (
+                <Link key={f.findingId} href={`/findings/${f.findingId}`} className="block rounded px-1.5 py-1 hover:bg-surface-hover">
+                  <span className="flex items-center gap-1.5"><SeverityBadge severity={f.severity} /><span className="font-mono text-[11px] text-fg-3">L{f.startLine}</span></span>
+                  <span className="mt-0.5 line-clamp-2 block text-xs text-fg-2">{f.message}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+          <div className="p-2">
+            <p className="px-1 pb-1 text-[11px] font-medium uppercase tracking-wide text-fg-3">Outline</p>
+            {symbols.length === 0 ? <p className="px-1 text-xs text-fg-3">{annotations.data?.indexId ? "No symbols." : "Analyse the project to see symbols."}</p> : symbols.map((s) => (
+              <button key={s.key} onClick={() => goTo(s.startLine)} className="flex w-full items-center justify-between gap-2 rounded px-1.5 py-1 text-left hover:bg-surface-hover">
+                <span className="truncate font-mono text-xs text-fg-2">{s.container ? `${s.container}.` : ""}{s.name}</span>
+                <span className="shrink-0 text-[10px] uppercase text-fg-3">{s.kind}</span>
+              </button>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -119,6 +146,7 @@ function SourceBrowser() {
   const router = useRouter();
   const snapshotId = search.get("snapshot") ?? undefined;
   const selected = search.get("path") ?? undefined;
+  const line = Number(search.get("line")) || undefined;
   const project = useProject(projectId);
   const [filter, setFilter] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -175,7 +203,7 @@ function SourceBrowser() {
         title="Source"
         description={snapshot.data ? `Snapshot ${shortDigest(snapshot.data.contentDigest)} · ${snapshot.data.fileCount} files · read-only` : undefined}
       />
-      <Card className="grid min-h-[60vh] grid-cols-[18rem_1fr] overflow-hidden">
+      <Card className="grid min-h-[60vh] grid-cols-[16rem_1fr] overflow-hidden">
         <div className="flex min-h-0 flex-col border-r border-border">
           <div className="border-b border-border p-2">
             <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter files" aria-label="Filter files" />
@@ -187,7 +215,7 @@ function SourceBrowser() {
           </div>
         </div>
         <div className="min-w-0">
-          {selected ? <CodeView snapshotId={snapshotId} path={selected} /> : <EmptyState title="Select a file" description="Choose a file from the tree to view its contents." />}
+          {selected ? <CodeView projectId={projectId} snapshotId={snapshotId} path={selected} line={line} /> : <EmptyState title="Select a file" description="Choose a file from the tree to view its contents." />}
         </div>
       </Card>
     </>

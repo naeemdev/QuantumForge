@@ -37,7 +37,11 @@ export default function OverviewPage() {
         <Stat label="Projects" value={formatNumber(o.projectCount)} detail={`${formatNumber(o.snapshotCount)} source snapshots`} />
         <Stat label="Test runs" value={formatNumber(totalJobs)} detail={`${o.jobsByState.FAILED ?? 0} failed · ${o.jobsByState.SUCCEEDED ?? 0} passed`} />
         <Stat label="Test cases executed" value={formatNumber(o.testTotals.passed + o.testTotals.failed + o.testTotals.errored + o.testTotals.skipped)} detail={`${formatNumber(o.testTotals.failed)} failing results`} />
-        <Stat label="Active jobs" value={`${o.activeJobs} / ${o.activeJobLimit}`} detail="Concurrent job quota" />
+        <Stat
+          label="Active findings"
+          value={<Link href="/findings" className="hover:underline">{formatNumber(Object.values(o.openFindings).reduce((a, b) => a + b, 0))}</Link>}
+          detail={`${(o.openFindings.critical ?? 0) + (o.openFindings.high ?? 0)} high or critical · suspected`}
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -79,6 +83,10 @@ export default function OverviewPage() {
         </Card>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader title="Execution quota" />
+            <p className="px-4 py-3 text-[13px] text-fg-2"><span className="tabular font-medium text-fg">{o.activeJobs} / {o.activeJobLimit}</span> concurrent jobs in use</p>
+          </Card>
           <Card>
             <CardHeader title="Jobs by state" />
             <ul className="divide-y divide-border">

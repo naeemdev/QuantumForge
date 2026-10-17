@@ -3,8 +3,8 @@ package com.quantumforge.worker.sandbox
 import java.nio.file.Path
 import java.time.Duration
 
-/** Where the job's files live as seen from inside the sandbox. */
-data class SandboxPaths(val source: String, val output: String)
+/** Where the job's files live as seen from inside the sandbox. Tool directories are keyed by name. */
+data class SandboxPaths(val source: String, val output: String, val tools: Map<String, String> = emptyMap())
 
 data class ExecutionSpec(
     val sourceDir: Path,
@@ -17,6 +17,8 @@ data class ExecutionSpec(
     val memoryMb: Int,
     val cpuMillis: Int,
     val maxOutputBytes: Long,
+    /** Trusted, read-only tool directories (name → host path) the command needs, such as an analyzer. */
+    val tools: Map<String, Path> = emptyMap(),
 )
 
 data class ExecutionResult(
