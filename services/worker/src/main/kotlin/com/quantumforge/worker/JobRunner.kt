@@ -142,6 +142,11 @@ class JobRunner(
             return client.complete(job, CompletionReport(AttemptOutcome.INFRA_ERROR, null, null, "Sandbox failure: ${e.message}", null))
         }
         if (leaseLost.get()) throw LeaseLostException("Lease lost during execution")
+        result.sandboxError?.let { error ->
+            log.error("Sandbox failed for attempt {}: {}", job.attemptId, error)
+            client.uploadArtifact(job, "stderr.log", "STDERR", "text/plain", result.stderr.truncated, result.stderr.file)
+            return client.complete(job, CompletionReport(AttemptOutcome.INFRA_ERROR, result.exitCode, result.durationMs, error, null))
+        }
 
         // Evidence first, verdict second: a crash between the two leaves the attempt
         // open, the lease expires and the job is retried rather than misreported.
