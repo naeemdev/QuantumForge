@@ -33,7 +33,7 @@ class DevProcessSandbox : Sandbox {
     )
 
     override fun run(spec: ExecutionSpec, shouldStop: () -> Boolean): ExecutionResult {
-        val paths = SandboxPaths(spec.sourceDir.toString(), spec.outputDir.toString())
+        val paths = SandboxPaths(spec.sourceDir.toString(), spec.outputDir.toString(), spec.tools.mapValues { it.value.toString() })
         val inner = spec.command(paths)
         val wrapped = buildList {
             if (netns) addAll(listOf("unshare", "--user", "--map-root-user", "--net", "--"))

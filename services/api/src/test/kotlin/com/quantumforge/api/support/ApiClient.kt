@@ -106,3 +106,6 @@ fun JsonNode.text(): String = asString() ?: ""
 fun JsonNode.elements(): List<JsonNode> = (0 until size()).map { get(it)!! }
 
 fun JsonNode.texts(field: String): List<String> = elements().map { it.path(field).text() }
+
+@JvmName("listTexts")
+fun List<JsonNode>.texts(field: String): List<String> = map { it.path(field).text() }

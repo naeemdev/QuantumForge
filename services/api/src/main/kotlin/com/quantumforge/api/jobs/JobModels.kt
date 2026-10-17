@@ -20,7 +20,10 @@ enum class JobState(val terminal: Boolean) {
     }
 }
 
-enum class JobType { TEST_EXECUTION }
+enum class JobType(val presets: Set<String>) {
+    TEST_EXECUTION(setOf("NODE_TEST")),
+    STATIC_ANALYSIS(setOf("TS_ANALYSIS")),
+}
 
 /** What a worker may report for an attempt. LEASE_EXPIRED is set only by the reaper. */
 enum class AttemptOutcome { SUCCEEDED, FAILED, TIMED_OUT, CANCELLED, INFRA_ERROR, LEASE_EXPIRED }
@@ -30,12 +33,17 @@ enum class AttemptOutcome { SUCCEEDED, FAILED, TIMED_OUT, CANCELLED, INFRA_ERROR
  * decides what runs, the worker only fills in paths. New toolchains are added as
  * presets with their own image and limits.
  */
-enum class TestPreset(val runtime: String, val description: String) {
+enum class ExecutionPreset(val runtime: String, val description: String) {
     NODE_TEST("node", "Node.js built-in test runner over TypeScript (type stripping) and JavaScript test files"),
+    TS_ANALYSIS("node", "QuantumForge TypeScript adapter: indexing, dependency graph and static analysis rules"),
 }
 
-data class TestExecutionConfig(
-    val preset: TestPreset = TestPreset.NODE_TEST,
+/**
+ * What a worker runs for a job. For NODE_TEST the patterns select test files;
+ * analysis presets ignore them.
+ */
+data class ExecutionConfig(
+    val preset: ExecutionPreset = ExecutionPreset.NODE_TEST,
     /** Glob patterns relative to the snapshot root; defaults to the preset's conventions. */
     val testPatterns: List<String> = emptyList(),
     val timeoutSeconds: Int? = null,
@@ -43,7 +51,7 @@ data class TestExecutionConfig(
     val cpuMillis: Int = 1000,
     val maxOutputBytes: Long = 1024 * 1024,
 ) {
-    fun validated(maxTimeout: Int): TestExecutionConfig {
+    fun validated(maxTimeout: Int): ExecutionConfig {
         if (testPatterns.size > 20) throw BadRequestException("invalid_config", "At most 20 test patterns are allowed")
         testPatterns.forEach {
             if (!PATTERN.matches(it) || it.contains("..") || it.startsWith("/") || it.startsWith("-")) {
@@ -74,7 +82,7 @@ data class Job(
     val jobType: JobType,
     val state: JobState,
     val priority: Int,
-    val config: TestExecutionConfig,
+    val config: ExecutionConfig,
     val idempotencyKey: String?,
     val maxAttempts: Int,
     val attemptCount: Int,
