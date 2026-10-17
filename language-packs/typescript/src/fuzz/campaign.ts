@@ -5,7 +5,7 @@ import { discoverTargets } from "./discover.ts";
 import { generate, prng, shrinkCandidates } from "./generate.ts";
 import { ORACLES } from "./oracles.ts";
 import { TargetSession } from "./session.ts";
-import type { CallOutcome, CampaignReport, FailureReport, FuzzTarget, OracleKind, TargetReport } from "./types.ts";
+import type { CallOutcome, CampaignReport, CorpusEntry, FailureReport, FuzzTarget, OracleKind, TargetReport } from "./types.ts";
 
 export const FUZZ_ENGINE_VERSION = "0.1.0";
 
@@ -18,6 +18,9 @@ export interface CampaignOptions {
   maxFailuresPerTarget: number;
   shrinkEvaluations: number;
   reproductionAttempts: number;
+  /** Wall-clock budget for the whole campaign; targets not started in time are skipped. */
+  campaignBudgetMs: number;
+  corpus: CorpusEntry[];
 }
 
 export const DEFAULT_CAMPAIGN: CampaignOptions = {
@@ -28,6 +31,8 @@ export const DEFAULT_CAMPAIGN: CampaignOptions = {
   maxFailuresPerTarget: 3,
   shrinkEvaluations: 200,
   reproductionAttempts: 3,
+  campaignBudgetMs: 10 * 60_000,
+  corpus: [],
 };
 
 export const LIMITATIONS = [
@@ -64,6 +69,10 @@ export async function runCampaign(rootDir: string, options: CampaignOptions = DE
   let totalCalls = 0;
 
   for (const target of targets) {
+    if (Date.now() - started > options.campaignBudgetMs) {
+      skipped.push({ path: target.path, exportName: target.exportName, line: target.line, reason: "campaign time budget exhausted before this function was reached" });
+      continue;
+    }
     const modulePath = join(root, target.path);
     const session = new TargetSession(modulePath, target.exportName);
     const loadError = await session.load();
@@ -78,16 +87,22 @@ export async function runCampaign(rootDir: string, options: CampaignOptions = DE
     const seen = new Set<string>();
     let iterations = 0;
     let rejected = 0;
+    // Known failing inputs first: this is how a fix is confirmed or a regression caught.
+    const replay = options.corpus
+      .filter((e) => e.path === target.path && e.exportName === target.exportName && Array.isArray(e.input))
+      .map((e) => decode(e.input) as unknown[]);
+    const replayed = replay.length;
+    let exploring = true;
     const call = async (s: TargetSession, args: unknown[]) => {
       totalCalls++;
       return s.call(encode(args) as unknown[], options.callTimeoutMs);
     };
 
-    while (iterations < options.iterationsPerTarget && Date.now() - targetStarted < options.targetBudgetMs) {
+    while (replay.length || (exploring && iterations < options.iterationsPerTarget + replayed && Date.now() - targetStarted < options.targetBudgetMs)) {
       // No parameters means every call is the same call; once is enough.
-      if (target.parameters.length === 0 && iterations > 0) break;
+      if (!replay.length && target.parameters.length === 0 && iterations > 0) break;
       iterations++;
-      const args = generateArgs(target, random);
+      const args = replay.shift() ?? generateArgs(target, random);
       const outcome = await call(session, args);
       if (outcome.kind === "rejected") rejected++;
       if (!isFailure(outcome)) continue;
@@ -146,7 +161,8 @@ export async function runCampaign(rootDir: string, options: CampaignOptions = DE
         reproductionTest: reproductionTest(target, current, currentOutcome.kind as OracleKind, options.callTimeoutMs),
         fingerprint: createHash("sha256").update(`fuzz|${target.path}|${target.exportName}|${signature}`).digest("hex"),
       });
-      if (failures.length >= options.maxFailuresPerTarget || outcome.kind === "timeout" || outcome.kind === "crash") break;
+      // Stop exploring, but still replay the rest of the corpus.
+      if (failures.length >= options.maxFailuresPerTarget || outcome.kind === "timeout" || outcome.kind === "crash") exploring = false;
     }
     session.reset();
     reports.push({
@@ -155,6 +171,7 @@ export async function runCampaign(rootDir: string, options: CampaignOptions = DE
       signature: target.signature,
       line: target.line,
       iterations,
+      replayed,
       rejectedInputs: rejected,
       durationMs: Date.now() - targetStarted,
       failures,
@@ -164,7 +181,7 @@ export async function runCampaign(rootDir: string, options: CampaignOptions = DE
   return {
     schemaVersion: 1,
     engine: { id: "typescript-fuzz", version: FUZZ_ENGINE_VERSION, oracles: ORACLES, limitations: LIMITATIONS },
-    config: { seed: options.seed, iterationsPerTarget: options.iterationsPerTarget, callTimeoutMs: options.callTimeoutMs },
+    config: { seed: options.seed, iterationsPerTarget: options.iterationsPerTarget, callTimeoutMs: options.callTimeoutMs, corpusEntries: options.corpus.length },
     targets: reports,
     skipped: skipped.sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line),
     stats: {

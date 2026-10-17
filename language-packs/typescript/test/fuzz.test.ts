@@ -143,6 +143,29 @@ test("a function that exhausts its heap is reported as a crash, not a hang", asy
   assert.match(failure!.message, /memory/);
 });
 
+test("corpus inputs are replayed first, so a known failure is re-checked whatever the seed", async () => {
+  const root = project({ "src/p.ts": `export const ratio = (a: number, b: number) => (b === 7 ? a / 0 : a + b);` });
+  const corpus = [{ path: "src/p.ts", exportName: "ratio", input: [1, 7] }, { path: "src/other.ts", exportName: "x", input: [] }];
+  const report = await runCampaign(root, { ...quick, iterationsPerTarget: 5, corpus });
+  const [target] = report.targets;
+  assert.equal(target!.replayed, 1);
+  assert.equal(target!.failures.length, 1);
+  assert.equal((decode(target!.failures[0]!.input) as number[])[1], 7, "only the replayed input reaches the bug");
+  assert.equal(report.config.corpusEntries, 2);
+
+  const fixed = project({ "src/p.ts": `export const ratio = (a: number, b: number) => a + b;` });
+  const after = await runCampaign(fixed, { ...quick, iterationsPerTarget: 5, corpus });
+  assert.equal(after.targets[0]!.replayed, 1);
+  assert.equal(after.stats.failures, 0);
+});
+
+test("functions not reached within the campaign budget are listed as skipped", async () => {
+  const root = project({ "src/a.ts": `export const f = (x: number) => x;`, "src/b.ts": `export const g = (x: number) => x;` });
+  const report = await runCampaign(root, { ...quick, campaignBudgetMs: 0 });
+  assert.equal(report.targets.length, 0);
+  assert.deepEqual(report.skipped.map((s) => s.reason), Array(2).fill("campaign time budget exhausted before this function was reached"));
+});
+
 test("campaigns are reproducible from their seed", async () => {
   const root = project({ "src/a.ts": `export const half = (xs: number[]) => xs.reduce((a, b) => a + b) / 2;` });
   const strip = (r: Awaited<ReturnType<typeof runCampaign>>) => r.targets.map((t) => ({ ...t, durationMs: 0 }));
