@@ -1,0 +1,19 @@
+{
+  "name": "@quantumforge/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAPI document of the public QuantumForge API and the TypeScript types generated from it.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./openapi.json": "./openapi.json"
+  },
+  "scripts": {
+    "generate": "openapi-typescript openapi.json -o src/schema.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}
