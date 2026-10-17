@@ -1,0 +1,10 @@
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -24,6 +24,7 @@
+ export function addItem(cart: Cart, sku: string, unitPrice: number, quantity: number): Cart {
+   if (sku.trim() === "") throw new TypeError("sku is required");
+   if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new RangeError("unitPrice must be a non-negative number");
++  if (!Number.isInteger(quantity) || quantity <= 0) throw new RangeError("quantity must be a positive integer");
+   const existing = cart.lines.find((line) => line.sku === sku);
+   if (existing) {
+     return {

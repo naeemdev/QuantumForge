@@ -1,0 +1,11 @@
+{
+  "name": "sample-commerce-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Small order-processing library with documented seeded defects, used to exercise QuantumForge end to end.",
+  "type": "module",
+  "engines": { "node": ">=22.6" },
+  "scripts": {
+    "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\""
+  }
+}

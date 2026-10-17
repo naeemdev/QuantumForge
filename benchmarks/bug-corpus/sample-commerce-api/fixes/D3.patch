@@ -1,0 +1,10 @@
+--- a/src/orders.ts
++++ b/src/orders.ts
+@@ -30,6 +30,6 @@
+   const net = subtotal(cart);
+   const tax = salesTax(net, taxRatePercent);
+   const order: Order = { id: `ord-${++sequence}`, subtotal: net, tax, total: Math.round((net + tax) * 100) / 100 };
+-  audit.write({ type: "order.placed", orderId: order.id, total: order.total });
++  await audit.write({ type: "order.placed", orderId: order.id, total: order.total });
+   return order;
+ }
