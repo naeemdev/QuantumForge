@@ -1,0 +1,12 @@
+# Local development: dev login and the process-based worker are allowed.
+# Never use this profile on a machine reachable by anyone else.
+quantumforge:
+  auth:
+    dev-login:
+      enabled: true
+  execution:
+    allow-dev-isolation: true
+    bootstrap-workers:
+      - name: local-dev-worker
+        isolation-mode: dev-process
+        token: ${QF_DEV_WORKER_TOKEN:dev-worker-token-change-me}
