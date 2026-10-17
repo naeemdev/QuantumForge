@@ -1,0 +1,17 @@
+[versions]
+kotlin = "2.2.21"
+spring-boot = "4.0.8"
+springdoc = "3.0.3"
+commons-compress = "1.28.0"
+awssdk = "2.31.78"
+nimbus = "10.4"
+
+[libraries]
+springdoc-webmvc = { module = "org.springdoc:springdoc-openapi-starter-webmvc-api", version.ref = "springdoc" }
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "awssdk" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
