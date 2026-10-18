@@ -24,6 +24,7 @@ enum class JobType(val presets: Set<String>) {
     TEST_EXECUTION(setOf("NODE_TEST")),
     STATIC_ANALYSIS(setOf("TS_ANALYSIS")),
     FUZZ_CAMPAIGN(setOf("TS_FUZZ")),
+    MUTATION_TEST(setOf("TS_MUTATION")),
 }
 
 /** What a worker may report for an attempt. LEASE_EXPIRED is set only by the reaper. */
@@ -38,6 +39,15 @@ enum class ExecutionPreset(val runtime: String, val description: String) {
     NODE_TEST("node", "Node.js built-in test runner over TypeScript (type stripping) and JavaScript test files"),
     TS_ANALYSIS("node", "QuantumForge TypeScript adapter: indexing, dependency graph and static analysis rules"),
     TS_FUZZ("node", "QuantumForge TypeScript fuzzer: type-driven inputs, shrinking and reproduction of failures"),
+    TS_MUTATION("node", "QuantumForge mutation testing: runs the project's node:test suite against generated mutants"),
+}
+
+data class MutationSettings(val seed: Long = 1, val maxMutants: Int = 500) {
+    fun validated(): MutationSettings {
+        if (seed !in 1..Int.MAX_VALUE.toLong()) throw BadRequestException("invalid_config", "seed must be between 1 and ${Int.MAX_VALUE}")
+        if (maxMutants !in 1..5000) throw BadRequestException("invalid_config", "maxMutants must be between 1 and 5000")
+        return this
+    }
 }
 
 /** A previously failing input that a campaign replays before generating new ones. */
@@ -59,8 +69,8 @@ data class FuzzSettings(
 }
 
 /**
- * What a worker runs for a job. For NODE_TEST the patterns select test files;
- * analysis presets ignore them.
+ * What a worker runs for a job. For NODE_TEST and TS_MUTATION the patterns
+ * select test files; analysis and fuzzing presets ignore them.
  */
 data class ExecutionConfig(
     val preset: ExecutionPreset = ExecutionPreset.NODE_TEST,
@@ -71,6 +81,7 @@ data class ExecutionConfig(
     val cpuMillis: Int = 1000,
     val maxOutputBytes: Long = 1024 * 1024,
     val fuzz: FuzzSettings? = null,
+    val mutation: MutationSettings? = null,
 ) {
     fun validated(maxTimeout: Int): ExecutionConfig {
         if (testPatterns.size > 20) throw BadRequestException("invalid_config", "At most 20 test patterns are allowed")
@@ -86,6 +97,7 @@ data class ExecutionConfig(
         if (cpuMillis !in 100..8000) throw BadRequestException("invalid_config", "cpuMillis must be between 100 and 8000")
         if (maxOutputBytes !in 1024..(16L * 1024 * 1024)) throw BadRequestException("invalid_config", "maxOutputBytes must be between 1 KiB and 16 MiB")
         fuzz?.validated()
+        mutation?.validated()
         return this
     }
 

@@ -14,14 +14,14 @@ import java.nio.file.Path
 import kotlin.test.assertEquals
 
 /**
- * The M1, M2 and M3 acceptance flows with the container sandbox instead of the
+ * The M1, M2 and M3 acceptance flows (including mutation testing) with the container sandbox instead of the
  * development process sandbox. Needs Docker (QF_TEST_DOCKER=1) and a deployed
  * copy of the TypeScript adapter (QF_TEST_TS_ANALYZER, e.g. from `pnpm deploy`),
  * because a pnpm workspace's symlinked dependencies do not resolve inside a container.
  */
 class ContainerExecutionTest : IntegrationTest() {
     @Test
-    fun `test runs, analyses and fuzz campaigns execute in containers`() {
+    fun `test runs, analyses, fuzz campaigns and mutation runs execute in containers`() {
         assumeTrue(System.getenv("QF_TEST_DOCKER") == "1", "QF_TEST_DOCKER not set")
         val analyzer = System.getenv("QF_TEST_TS_ANALYZER")?.let { Path.of(it) }
         assumeTrue(analyzer != null, "QF_TEST_TS_ANALYZER not set")
@@ -71,5 +71,14 @@ class ContainerExecutionTest : IntegrationTest() {
         val reproduction = fuzzed.path("reproductions").elements().single()
         assertEquals("averageUnitPrice", reproduction.path("exportName").text())
         assertEquals(3, reproduction.path("reproduced").asInt())
+
+        // Mutation testing writes its work copies to the output mount and runs node:test once per mutant.
+        val mutationRun = api.post("/api/v1/projects/$project/mutation-runs", token, mapOf("snapshotId" to snapshot, "maxMutants" to 20)).field("id")
+        worker.runOnce()
+        val mutated = api.get("/api/v1/mutation-runs/$mutationRun", token).json
+        assertEquals("SUCCEEDED", mutated.path("job").path("state").text(), mutated.toString())
+        assertEquals(12, mutated.path("run").path("baseline").path("passed").asInt())
+        assertEquals(20, mutated.path("run").path("total").asInt())
+        assertEquals(0, mutated.path("run").path("errors").asInt())
     }
 }
