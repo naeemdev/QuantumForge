@@ -35,6 +35,7 @@ export const ORACLES: { id: OracleKind; description: string }[] = [
   { id: "non-finite-result", description: "The function returned NaN or Infinity (directly or in a field of the result) although every numeric input was finite." },
   { id: "timeout", description: "A single call did not return within the per-call time limit." },
   { id: "crash", description: "The call ran out of its heap limit or ended the process that hosted it." },
+  { id: "property-violated", description: "A property from a *.properties.ts file returned false or threw for a generated input. Returning undefined discards an input the property does not apply to." },
 ];
 
 export function isEngineError(error: unknown): error is Error {

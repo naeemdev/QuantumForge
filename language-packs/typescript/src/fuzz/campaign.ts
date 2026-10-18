@@ -74,7 +74,7 @@ export async function runCampaign(rootDir: string, options: CampaignOptions = DE
       continue;
     }
     const modulePath = join(root, target.path);
-    const session = new TargetSession(modulePath, target.exportName);
+    const session = new TargetSession(modulePath, target.exportName, target.kind);
     const loadError = await session.load();
     if (loadError) {
       skipped.push({ path: target.path, exportName: target.exportName, line: target.line, reason: loadError });
@@ -143,7 +143,7 @@ export async function runCampaign(rootDir: string, options: CampaignOptions = DE
       // Reproduce in fresh processes, so module state from the campaign cannot be the cause.
       let reproduced = 0;
       for (let attempt = 0; attempt < options.reproductionAttempts; attempt++) {
-        const fresh = new TargetSession(modulePath, target.exportName);
+        const fresh = new TargetSession(modulePath, target.exportName, target.kind);
         const o = await call(fresh, current);
         fresh.reset();
         if (isFailure(o) && failureSignature(o) === signature) reproduced++;
@@ -166,6 +166,8 @@ export async function runCampaign(rootDir: string, options: CampaignOptions = DE
     }
     session.reset();
     reports.push({
+      kind: target.kind,
+      description: target.description,
       path: target.path,
       exportName: target.exportName,
       signature: target.signature,
@@ -206,6 +208,15 @@ export function reproductionTest(target: FuzzTarget, args: unknown[], oracle: Or
   ];
   const name = JSON.stringify(`${target.exportName}: ${oracle} for ${call.length > 80 ? `${call.slice(0, 77)}...` : call}`);
   switch (oracle) {
+    case "property-violated":
+      return [
+        ...header,
+        `test(${JSON.stringify(target.description ?? `${target.exportName} holds`)}, async () => {`,
+        `  // Returns false or throws while the property is violated.`,
+        `  assert.notEqual(await ${call}, false);`,
+        `});`,
+        ``,
+      ].join("\n");
     case "non-finite-result":
       return [
         ...header,
