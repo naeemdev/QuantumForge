@@ -181,6 +181,22 @@ A campaign is reproducible from its seed. Failures are identified by function,
 oracle and error signature (not the input), so the same defect found with a
 different input is the same finding.
 
+### Mutation testing
+
+A fourth job type (`MUTATION_TEST`, preset `TS_MUTATION`).
+
+```
+worker sandbox: node language-packs/typescript/src/mutate/cli.ts --root src --work out/work --out out/mutation.json [--tests <glob>]...
+   find mutants      AST of non-test files: comparison, equality, arithmetic (not string +),
+                     logical, negation, condition, constant, call removal; each must still parse
+   baseline          node:test with a JSON-lines reporter → per-test pass/fail
+   per mutant        apply in one of N work copies, run the suite, restore
+                     KILLED if a baseline-passing test fails or goes missing,
+                     TIMEOUT on the limit, SURVIVED otherwise
+        ▼
+mutation.json ──upload──▶ job_artifacts (MUTATION_REPORT) ──API──▶ mutation_runs, mutation_results
+```
+
 ## Frontend
 
 Next.js App Router, TypeScript strict, Tailwind, TanStack Query. Source is shown in a
@@ -198,7 +214,7 @@ services/api             Spring Boot control plane
 services/worker          execution worker
 packages/contracts       OpenAPI document + generated TypeScript types
 packages/language-sdk    language adapter contract (report schema, capabilities)
-language-packs/typescript TypeScript/JavaScript adapter, rules and fuzzer (src/fuzz)
+language-packs/typescript TypeScript/JavaScript adapter, rules, fuzzer (src/fuzz) and mutation runner (src/mutate)
 benchmarks/bug-corpus    original sample repositories with documented seeded defects
 infrastructure/docker    Dockerfiles and compose files
 docs                     design docs, backlog, progress

@@ -100,6 +100,11 @@ date. This page covers the conventions that the schema cannot express.
 | `GET /api/v1/fuzz-campaigns/{id}` | `job.read` | Job, attempts, campaign (engine, seed, oracles, limitations, counts), every target tested or skipped with the reason, and the reproductions this campaign recorded |
 | `GET /api/v1/fuzz-campaigns/{id}/artifacts` | `job.read` | Includes the raw `fuzz.json` report |
 
+| `POST /api/v1/projects/{id}/mutation-runs` | `job.submit` | Queues a `MUTATION_TEST` job. Body: `snapshotId`, `testPatterns` (globs, default node:test conventions), `seed`, `maxMutants` (1–5000), `timeoutSeconds`, `priority`. Idempotency-Key supported |
+| `GET /api/v1/projects/{id}/mutation-runs` | `project.read` | Mutation runs, newest first, with score and counts once finished |
+| `GET /api/v1/mutation-runs/{id}` | `job.read` | Job, attempts, run (baseline, score, operators, limitations) and every mutant, survivors first |
+| `GET /api/v1/mutation-runs/{id}/artifacts` | `job.read` | Includes the raw `mutation.json` report |
+
 Reproduction inputs use a JSON encoding that tags what JSON cannot carry:
 `{"$qf": "NaN" | "Infinity" | "-Infinity" | "-0" | "undefined"}`.
 
@@ -107,7 +112,7 @@ Reproduction inputs use a JSON encoding that tags what JSON cannot carry:
 
 The product plan names `POST /projects/{id}/analyses`, `GET /analyses/{id}` and
 `/repair-verifications`. Test execution is exposed as `test-runs` and static
-analysis as `analyses`, fuzzing as `fuzz-campaigns`; repair verifications (M4) will be another job type on the same
+analysis as `analyses`, fuzzing as `fuzz-campaigns`, mutation testing as `mutation-runs`; repair verifications (M4) will be another job type on the same
 queue. The `/jobs` endpoints stay the generic view (filter with `type`).
 
 ## Worker protocol (internal, not in OpenAPI)

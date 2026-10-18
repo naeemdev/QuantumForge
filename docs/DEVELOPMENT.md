@@ -85,7 +85,7 @@ scripts/e2e-stack.sh stop
 
 The specs in `tests/e2e/specs` drive the real UI: sign-in, onboarding, importing
 the seeded sample, a test run (6 of 18 failing), an analysis (5 findings), triage,
-code intelligence, and a fuzz campaign that reproduces D6. Logs are in `build/e2e/`.
+code intelligence, a fuzz campaign that reproduces D6, and a mutation run. Logs are in `build/e2e/`.
 
 ## Container sandbox tests
 
@@ -109,7 +109,14 @@ pnpm --filter @quantumforge/lang-typescript fuzz --root benchmarks/bug-corpus/sa
 # options: --seed N --iterations N --call-timeout-ms N --budget-ms N --corpus <file>
 ```
 
-The fuzzer **executes** the code it is pointed at. Only run it on code you trust
+Mutation testing works the same way and runs the project's tests once per mutant:
+
+```bash
+pnpm --filter @quantumforge/lang-typescript mutate --root benchmarks/bug-corpus/sample-commerce-api --out /tmp/mutation.json
+# options: --tests <glob> (repeatable) --max-mutants N --seed N --concurrency N --budget-ms N --work <dir>
+```
+
+The fuzzer and the mutation runner **execute** the code they are pointed at. Only run it on code you trust
 outside the worker sandbox. The adapter tests (`pnpm --filter @quantumforge/lang-typescript test`)
 include the fuzzer's own tests.
 
