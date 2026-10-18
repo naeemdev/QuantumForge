@@ -20,11 +20,12 @@ function humanAction(action: string) {
   return action.replace(/[._]/g, " ");
 }
 
-const jobTypeLabel: Record<string, string> = { TEST_EXECUTION: "Test run", STATIC_ANALYSIS: "Static analysis", FUZZ_CAMPAIGN: "Fuzz campaign" };
+const jobTypeLabel: Record<string, string> = { TEST_EXECUTION: "Test run", STATIC_ANALYSIS: "Static analysis", FUZZ_CAMPAIGN: "Fuzz campaign", MUTATION_TEST: "Mutation run" };
 
 function JobResult({ type, summary }: { type: string; summary: Record<string, unknown> | null | undefined }) {
-  const part = (summary?.[type === "FUZZ_CAMPAIGN" ? "fuzz" : "analysis"] ?? null) as Record<string, number> | null;
+  const part = (summary?.[type === "FUZZ_CAMPAIGN" ? "fuzz" : type === "MUTATION_TEST" ? "mutation" : "analysis"] ?? null) as Record<string, number> | null;
   if (!part) return <span className="text-xs text-fg-3">—</span>;
+  if (type === "MUTATION_TEST") return <span className="tabular text-xs">{part.score != null ? `${part.score}% score` : "not run"} · {part.survived ?? 0} survived</span>;
   return type === "FUZZ_CAMPAIGN"
     ? <span className="tabular text-xs">{part.failures ?? 0} failures in {part.targetsTested ?? 0} functions</span>
     : <span className="tabular text-xs">{part.findings ?? 0} findings · {part.newFindings ?? 0} new</span>;
@@ -78,7 +79,7 @@ export default function OverviewPage() {
                 {o.recentJobs.map((j) => (
                   <Tr key={j.id}>
                     <Td>
-                      <Link href={j.jobType === "FUZZ_CAMPAIGN" ? `/break-my-code/${j.id}` : `/test-runs/${j.id}`} className="font-medium text-fg hover:underline">
+                      <Link href={j.jobType === "FUZZ_CAMPAIGN" ? `/break-my-code/${j.id}` : j.jobType === "MUTATION_TEST" ? `/break-my-code/mutation/${j.id}` : `/test-runs/${j.id}`} className="font-medium text-fg hover:underline">
                         {j.projectName}
                       </Link>
                       <p className="text-xs text-fg-3">{jobTypeLabel[j.jobType] ?? j.jobType}</p>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bug, Play } from "lucide-react";
 import { ACTIVE_FINDING_STATUSES } from "@quantumforge/contracts";
 import { useFindings, useFuzzCampaigns, useRevisions, useSubmitFuzzCampaign } from "@/lib/queries";
@@ -10,6 +10,7 @@ import { useSession } from "@/lib/session";
 import { formatDuration, formatRelative } from "@/lib/format";
 import { EvidenceBadge, FuzzingNote } from "@/components/fuzzing";
 import { FindingStatusBadge, SeverityBadge } from "@/components/findings";
+import { MutationOverview } from "@/components/mutation";
 import { JobStateBadge } from "@/components/job-state";
 import { ProjectPicker, useSelectedProject } from "@/components/project-picker";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Stat } from "@/components/ui/stat";
 import { EmptyState, ErrorState, InlineError, Spinner } from "@/components/ui/states";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
+import { cn } from "@/components/ui/cn";
+
+type Tab = "fuzzing" | "mutation";
 
 function StartCampaign({ projectId, snapshotId, open, onClose }: { projectId: string; snapshotId: string | undefined; open: boolean; onClose: () => void }) {
   const router = useRouter();
@@ -89,6 +93,9 @@ function Defects({ projectId }: { projectId: string }) {
 
 function BreakMyCode() {
   const { can } = useSession();
+  const router = useRouter();
+  const params = useSearchParams();
+  const tab: Tab = params.get("tab") === "mutation" ? "mutation" : "fuzzing";
   const { projectId, projects } = useSelectedProject();
   const campaigns = useFuzzCampaigns(projectId);
   const revisions = useRevisions(projectId ?? "");
@@ -101,11 +108,11 @@ function BreakMyCode() {
     <>
       <PageHeader
         title="Break My Code"
-        description="Fuzz campaigns that execute your exported functions with generated inputs, shrink every failure to a minimal case and prove it reproduces."
+        description="Attack your code and your tests: fuzzing finds inputs that break functions, mutation testing finds changes your tests would not notice."
         actions={
           <>
             <ProjectPicker projectId={projectId} projects={projects} />
-            {can("job.submit") && projectId && (
+            {tab === "fuzzing" && can("job.submit") && projectId && (
               <Button variant="primary" onClick={() => setStarting(true)} disabled={!latestSnapshot}>
                 <Play className="size-4" /> New campaign
               </Button>
@@ -117,42 +124,55 @@ function BreakMyCode() {
         projects.isPending ? <Spinner /> : <EmptyState icon={<Bug className="size-5" />} title="No projects" description="Create a project and import a snapshot first." />
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Open reproduced defects" value={active.data?.total ?? "—"} detail="Fuzzing findings not yet fixed" />
-            <Stat label="Functions tested" value={last?.targetsTested ?? "—"} detail={last ? `${last.targetsSkipped} skipped in the last campaign` : "No campaign yet"} />
-            <Stat label="Calls executed" value={last ? last.totalCalls.toLocaleString() : "—"} detail={last ? `in ${formatDuration(last.durationMs)}` : undefined} />
-            <Stat label="Last campaign" value={last ? formatRelative(last.createdAt) : "—"} detail={last ? `seed ${last.seed} · ${last.iterationsPerTarget} calls per function` : undefined} />
+          <div className="flex gap-1 border-b border-border" role="tablist">
+            {([["fuzzing", "Fuzzing"], ["mutation", "Mutation testing"]] as const).map(([id, label]) => (
+              <button key={id} role="tab" aria-selected={tab === id}
+                onClick={() => { const next = new URLSearchParams(params); if (id === "fuzzing") next.delete("tab"); else next.set("tab", id); router.replace(`/break-my-code?${next}`); }}
+                className={cn("-mb-px border-b-2 px-3 py-2.5 text-[13px]", tab === id ? "border-accent font-medium text-fg" : "border-transparent text-fg-3 hover:text-fg")}>
+                {label}
+              </button>
+            ))}
           </div>
+          {tab === "mutation" ? <MutationOverview projectId={projectId} snapshotId={latestSnapshot?.id} canSubmit={can("job.submit")} /> : (
+            <>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Stat label="Open reproduced defects" value={active.data?.total ?? "—"} detail="Fuzzing findings not yet fixed" />
+                <Stat label="Functions tested" value={last?.targetsTested ?? "—"} detail={last ? `${last.targetsSkipped} skipped in the last campaign` : "No campaign yet"} />
+                <Stat label="Calls executed" value={last ? last.totalCalls.toLocaleString() : "—"} detail={last ? `in ${formatDuration(last.durationMs)}` : undefined} />
+                <Stat label="Last campaign" value={last ? formatRelative(last.createdAt) : "—"} detail={last ? `seed ${last.seed} · ${last.iterationsPerTarget} calls per function` : undefined} />
+              </div>
 
-          <Card>
-            <CardHeader title="Reproduced defects" description="Every failure keeps its minimal input. A defect is marked fixed only when that input stops failing." />
-            <Defects projectId={projectId} />
-          </Card>
+              <Card>
+                <CardHeader title="Reproduced defects" description="Every failure keeps its minimal input. A defect is marked fixed only when that input stops failing." />
+                <Defects projectId={projectId} />
+              </Card>
 
-          <Card>
-            <CardHeader title="Campaigns" />
-            {campaigns.isPending ? <Spinner /> : campaigns.isError ? <div className="p-4"><ErrorState error={campaigns.error} /></div> : campaigns.data.items.length === 0 ? (
-              <EmptyState title="No campaigns yet" description="Start a campaign to fuzz the latest snapshot." />
-            ) : (
-              <Table>
-                <thead><tr><Th>Campaign</Th><Th>Status</Th><Th>Functions</Th><Th>Calls</Th><Th>Failures</Th><Th className="text-right">Duration</Th><Th className="text-right">Queued</Th></tr></thead>
-                <tbody>
-                  {campaigns.data.items.map(({ job, campaign }) => (
-                    <Tr key={job.id}>
-                      <Td><Link href={`/break-my-code/${job.id}`} className="font-mono text-xs text-fg hover:underline">{job.id.slice(-8)}</Link></Td>
-                      <Td><JobStateBadge state={job.state} jobType={job.jobType} /></Td>
-                      <Td className="text-xs">{campaign ? <>{campaign.targetsTested} tested · {campaign.targetsSkipped} skipped</> : "—"}</Td>
-                      <Td className="tabular text-xs">{campaign ? campaign.totalCalls.toLocaleString() : "—"}</Td>
-                      <Td className="tabular text-xs">{campaign ? <span className={campaign.failures > 0 ? "font-medium text-danger" : undefined}>{campaign.failures}</span> : "—"}</Td>
-                      <Td className="tabular text-right text-xs">{formatDuration(job.resultSummary?.durationMs as number | undefined)}</Td>
-                      <Td className="text-right text-xs">{formatRelative(job.queuedAt)}</Td>
-                    </Tr>
-                  ))}
-                </tbody>
-              </Table>
-            )}
-          </Card>
-          <FuzzingNote />
+              <Card>
+                <CardHeader title="Campaigns" />
+                {campaigns.isPending ? <Spinner /> : campaigns.isError ? <div className="p-4"><ErrorState error={campaigns.error} /></div> : campaigns.data.items.length === 0 ? (
+                  <EmptyState title="No campaigns yet" description="Start a campaign to fuzz the latest snapshot." />
+                ) : (
+                  <Table>
+                    <thead><tr><Th>Campaign</Th><Th>Status</Th><Th>Functions</Th><Th>Calls</Th><Th>Failures</Th><Th className="text-right">Duration</Th><Th className="text-right">Queued</Th></tr></thead>
+                    <tbody>
+                      {campaigns.data.items.map(({ job, campaign }) => (
+                        <Tr key={job.id}>
+                          <Td><Link href={`/break-my-code/${job.id}`} className="font-mono text-xs text-fg hover:underline">{job.id.slice(-8)}</Link></Td>
+                          <Td><JobStateBadge state={job.state} jobType={job.jobType} /></Td>
+                          <Td className="text-xs">{campaign ? <>{campaign.targetsTested} tested · {campaign.targetsSkipped} skipped</> : "—"}</Td>
+                          <Td className="tabular text-xs">{campaign ? campaign.totalCalls.toLocaleString() : "—"}</Td>
+                          <Td className="tabular text-xs">{campaign ? <span className={campaign.failures > 0 ? "font-medium text-danger" : undefined}>{campaign.failures}</span> : "—"}</Td>
+                          <Td className="tabular text-right text-xs">{formatDuration(job.resultSummary?.durationMs as number | undefined)}</Td>
+                          <Td className="text-right text-xs">{formatRelative(job.queuedAt)}</Td>
+                        </Tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </Card>
+              <FuzzingNote />
+            </>
+          )}
         </div>
       )}
       {projectId && <StartCampaign projectId={projectId} snapshotId={latestSnapshot?.id} open={starting} onClose={() => setStarting(false)} />}
