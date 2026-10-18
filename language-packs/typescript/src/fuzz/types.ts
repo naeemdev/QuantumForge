@@ -15,7 +15,17 @@ export type TypeSpec =
   | { kind: "tuple"; elements: TypeSpec[] }
   | { kind: "object"; properties: { name: string; optional: boolean; type: TypeSpec }[] };
 
+/**
+ * "function": an exported function checked with the generic oracles.
+ * "property": a function in a *.properties.ts file that states something
+ * the code must satisfy; it returns false or throws when it does not.
+ */
+export type TargetKind = "function" | "property";
+
 export interface FuzzTarget {
+  kind: TargetKind;
+  /** First line of the JSDoc comment, used to name a property. */
+  description: string | null;
   /** Snapshot-relative module path. */
   path: string;
   exportName: string;
@@ -33,7 +43,7 @@ export interface SkippedTarget {
 }
 
 /** Which generic oracle a failing call violated. */
-export type OracleKind = "runtime-error" | "non-finite-result" | "timeout" | "crash";
+export type OracleKind = "runtime-error" | "non-finite-result" | "timeout" | "crash" | "property-violated";
 
 export interface CallOutcome {
   kind: "ok" | "rejected" | OracleKind;
@@ -71,6 +81,8 @@ export interface CorpusEntry {
 }
 
 export interface TargetReport {
+  kind: TargetKind;
+  description: string | null;
   path: string;
   exportName: string;
   signature: string;

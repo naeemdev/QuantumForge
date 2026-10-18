@@ -1,6 +1,6 @@
 import { fork, type ChildProcess } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import type { CallOutcome } from "./types.ts";
+import type { CallOutcome, TargetKind } from "./types.ts";
 
 const HOST = fileURLToPath(new URL("./host.ts", import.meta.url));
 export const HEAP_LIMIT_MB = 256;
@@ -18,18 +18,20 @@ export class TargetSession {
   private nextId = 1;
   private readonly modulePath: string;
   private readonly exportName: string;
+  private readonly kind: TargetKind;
   private readonly loadTimeoutMs: number;
 
-  constructor(modulePath: string, exportName: string, loadTimeoutMs = 10_000) {
+  constructor(modulePath: string, exportName: string, kind: TargetKind = "function", loadTimeoutMs = 10_000) {
     this.modulePath = modulePath;
     this.exportName = exportName;
+    this.kind = kind;
     this.loadTimeoutMs = loadTimeoutMs;
   }
 
   /** Resolves to null once loaded, or to the reason the module could not be loaded. */
   load(): Promise<string | null> {
     if (this.ready) return this.ready;
-    const child = fork(HOST, [pathToFileURL(this.modulePath).href, this.exportName], {
+    const child = fork(HOST, [pathToFileURL(this.modulePath).href, this.exportName, this.kind], {
       execArgv: [...process.execArgv.filter((a) => !a.startsWith("--max-old-space-size")), `--max-old-space-size=${HEAP_LIMIT_MB}`],
       stdio: ["ignore", "ignore", "pipe", "ipc"],
     });

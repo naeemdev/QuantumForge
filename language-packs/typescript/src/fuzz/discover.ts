@@ -4,13 +4,15 @@ import { COMPILER_OPTIONS, DEFAULT_OPTIONS, listSourceFiles } from "../analyze.t
 import type { FuzzTarget, SkippedTarget, TypeSpec } from "./types.ts";
 
 const TEST_FILE = /(^|\/)(test|tests|__tests__|spec)\/|\.(test|spec)\.[cm]?[jt]sx?$/;
+/** Files whose exported functions are properties rather than code under test. */
+export const PROPERTY_FILE = /\.propert(y|ies)\.[cm]?[jt]sx?$/;
 const MAX_TYPE_DEPTH = 4;
 
 class Unsupported extends Error {}
 
 /**
  * Finds exported functions whose parameters can be generated from their
- * declared types. Anything that needs values we cannot construct faithfully
+ * declared types, and the properties declared in *.properties.ts files. Anything that needs values we cannot construct faithfully
  * (functions, class instances, generics, any/unknown) is skipped with a reason
  * instead of being fuzzed with guesses.
  */
@@ -63,7 +65,9 @@ export function discoverTargets(rootDir: string): { targets: FuzzTarget[]; skipp
         });
         const returnType = checker.getReturnTypeOfSignature(signature);
         const isAsync = returnType.getSymbol()?.getName() === "Promise";
-        targets.push({ path, exportName, signature: text, line, parameters, async: isAsync });
+        const property = PROPERTY_FILE.test(path);
+        const doc = ts.displayPartsToString(symbol.getDocumentationComment(checker)).split("\n")[0]?.trim() || null;
+        targets.push({ kind: property ? "property" : "function", description: doc, path, exportName, signature: text, line, parameters, async: isAsync });
       } catch (error) {
         if (!(error instanceof Unsupported)) throw error;
         skipped.push({ path, exportName, line, reason: `unsupported ${error.message}` });

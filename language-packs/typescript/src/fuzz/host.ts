@@ -7,9 +7,9 @@ import type { CallOutcome } from "./types.ts";
  * request over IPC. The parent enforces time and memory limits by killing this
  * process, so nothing here needs to guard against hangs.
  *
- * usage: host.ts <module file URL> <export name>
+ * usage: host.ts <module file URL> <export name> <function|property>
  */
-const [moduleUrl, exportName] = process.argv.slice(2) as [string, string];
+const [moduleUrl, exportName, kind] = process.argv.slice(2) as [string, string, "function" | "property"];
 const send = (message: unknown) => process.send!(message);
 
 // Target code must not write to the campaign's output.
@@ -43,12 +43,20 @@ process.on("message", async ({ id, args }: { id: number; args: unknown[] }) => {
   try {
     let result = target(...(decode(args) as unknown[]));
     if (result !== null && typeof (result as Promise<unknown>)?.then === "function") result = await result;
-    const bad = nonFinitePath(result);
-    outcome = bad
-      ? { kind: "non-finite-result", message: bad === "result" ? `returned ${String(result)}` : `${bad} is not a finite number`, result: encode(result) }
-      : { kind: "ok", result: encode(result) };
+    if (kind === "property") {
+      // false violates the property; undefined means the input does not apply.
+      outcome = result === false ? { kind: "property-violated", message: "returned false" }
+        : result === undefined ? { kind: "rejected", message: "input discarded by the property" }
+        : { kind: "ok" };
+    } else {
+      const bad = nonFinitePath(result);
+      outcome = bad
+        ? { kind: "non-finite-result", message: bad === "result" ? `returned ${String(result)}` : `${bad} is not a finite number`, result: encode(result) }
+        : { kind: "ok", result: encode(result) };
+    }
   } catch (error) {
-    outcome = { kind: isEngineError(error) ? "runtime-error" : "rejected", ...describe(error) };
+    // In a property every exception is a violation, assertion errors included.
+    outcome = { kind: kind === "property" ? "property-violated" : isEngineError(error) ? "runtime-error" : "rejected", ...describe(error) };
   }
   send({ type: "result", id, outcome });
 });

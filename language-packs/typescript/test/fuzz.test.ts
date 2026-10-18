@@ -166,6 +166,38 @@ test("functions not reached within the campaign budget are listed as skipped", a
   assert.deepEqual(report.skipped.map((s) => s.reason), Array(2).fill("campaign time budget exhausted before this function was reached"));
 });
 
+test("properties in *.properties.ts files are checked, shrunk and turned into regression tests", async () => {
+  const root = project({
+    "src/math.ts": `export const half = (n: number) => Math.floor(n / 2);`,
+    "properties/math.properties.ts": `
+      import { half } from "../src/math.ts";
+      /** Doubling the half of a whole number gives it back. */
+      export function propHalfRoundTrips(n: number): boolean | undefined {
+        if (!Number.isInteger(n)) return undefined;
+        return half(n) * 2 === n;
+      }
+      /** Halving never grows a non-negative number. */
+      export function propHalfNeverGrows(n: number): boolean | undefined {
+        if (n < 0) return undefined;
+        return half(n) <= n;
+      }
+    `,
+  });
+  const report = await runCampaign(root, quick);
+  const byName = Object.fromEntries(report.targets.map((t) => [t.exportName, t]));
+  assert.equal(byName.half?.kind, "function");
+  assert.equal(byName.propHalfRoundTrips?.kind, "property");
+  assert.equal(byName.propHalfRoundTrips?.description, "Doubling the half of a whole number gives it back.");
+  const [violation] = byName.propHalfRoundTrips!.failures;
+  assert.equal(violation?.oracle, "property-violated");
+  assert.equal(violation?.message, "returned false");
+  assert.deepEqual(decode(violation!.input), [1], "shrunk to the smallest odd number");
+  assert.deepEqual(violation!.reproductions, { attempts: 3, reproduced: 3 });
+  assert.match(violation!.reproductionTest, /assert\.notEqual\(await propHalfRoundTrips\(1\), false\)/);
+  assert.deepEqual(byName.propHalfNeverGrows!.failures, []);
+  assert.ok(byName.propHalfNeverGrows!.rejectedInputs > 0, "negative inputs are discarded, not failures");
+});
+
 test("campaigns are reproducible from their seed", async () => {
   const root = project({ "src/a.ts": `export const half = (xs: number[]) => xs.reduce((a, b) => a + b) / 2;` });
   const strip = (r: Awaited<ReturnType<typeof runCampaign>>) => r.targets.map((t) => ({ ...t, durationMs: 0 }));
