@@ -82,10 +82,12 @@ class JobRunner(
         val preset = job.config.preset
         val analysis = job.jobType == "STATIC_ANALYSIS"
         val fuzz = job.jobType == "FUZZ_CAMPAIGN"
+        val mutation = job.jobType == "MUTATION_TEST"
         val supported = when (job.jobType) {
             "TEST_EXECUTION" -> preset == "NODE_TEST"
             "STATIC_ANALYSIS" -> preset == "TS_ANALYSIS" && config.tsAnalyzerDir != null
             "FUZZ_CAMPAIGN" -> preset == "TS_FUZZ" && config.tsAnalyzerDir != null
+            "MUTATION_TEST" -> preset == "TS_MUTATION" && config.tsAnalyzerDir != null
             else -> false
         }
         if (!supported) {
@@ -94,8 +96,11 @@ class JobRunner(
         val timeout = Duration.ofSeconds(job.timeoutSeconds.toLong())
         val settings = job.config.fuzz ?: FuzzSettings()
         if (fuzz) Files.writeString(out.resolve("corpus.json"), json.writeValueAsString(settings.corpus))
+        val mutationSettings = job.config.mutation ?: MutationSettings()
+        // One test suite per CPU the job was granted.
+        val mutationConcurrency = (job.config.cpuMillis / 1000).coerceIn(1, 8)
         // Leave room to write the report before the sandbox's hard limit.
-        val fuzzBudgetMs = (job.timeoutSeconds * 1000L * 3 / 4).coerceAtLeast(1000)
+        val budgetMs = (job.timeoutSeconds * 1000L * 3 / 4).coerceAtLeast(1000)
         val node = if (sandbox.mode == "dev-process") config.nodeExecutable else "node"
         val spec = ExecutionSpec(
             sourceDir = src,
@@ -109,8 +114,15 @@ class JobRunner(
                         node, "--experimental-strip-types", "${p.tools.getValue(TS_ANALYZER)}/src/fuzz/cli.ts",
                         "--root", p.source, "--out", "${p.output}/fuzz.json", "--corpus", "${p.output}/corpus.json",
                         "--seed", settings.seed.toString(), "--iterations", settings.iterationsPerTarget.toString(),
-                        "--call-timeout-ms", settings.callTimeoutMs.toString(), "--budget-ms", fuzzBudgetMs.toString(),
+                        "--call-timeout-ms", settings.callTimeoutMs.toString(), "--budget-ms", budgetMs.toString(),
                     )
+                } else if (mutation) {
+                    listOf(
+                        node, "--experimental-strip-types", "${p.tools.getValue(TS_ANALYZER)}/src/mutate/cli.ts",
+                        "--root", p.source, "--out", "${p.output}/mutation.json", "--work", "${p.output}/work",
+                        "--seed", mutationSettings.seed.toString(), "--max-mutants", mutationSettings.maxMutants.toString(),
+                        "--concurrency", mutationConcurrency.toString(), "--budget-ms", budgetMs.toString(),
+                    ) + job.testPatterns.flatMap { listOf("--tests", it) }
                 } else {
                     listOf(
                         node,
@@ -131,7 +143,7 @@ class JobRunner(
             memoryMb = job.config.memoryMb,
             cpuMillis = job.config.cpuMillis,
             maxOutputBytes = job.config.maxOutputBytes,
-            tools = if (analysis || fuzz) mapOf(TS_ANALYZER to config.tsAnalyzerDir!!) else emptyMap(),
+            tools = if (analysis || fuzz || mutation) mapOf(TS_ANALYZER to config.tsAnalyzerDir!!) else emptyMap(),
         )
 
         val environment = linkedMapOf<String, Any?>(
@@ -147,8 +159,10 @@ class JobRunner(
             ),
             "snapshot" to mapOf("sha256" to job.snapshotDigest, "files" to prepared, "verified" to true),
             "testPatterns" to if (analysis || fuzz) null else job.testPatterns,
+            "mutation" to if (mutation) mapOf("seed" to mutationSettings.seed, "maxMutants" to mutationSettings.maxMutants,
+                "concurrency" to mutationConcurrency, "budgetMs" to budgetMs) else null,
             "fuzz" to if (fuzz) mapOf("seed" to settings.seed, "iterationsPerTarget" to settings.iterationsPerTarget,
-                "callTimeoutMs" to settings.callTimeoutMs, "corpusEntries" to settings.corpus.size, "budgetMs" to fuzzBudgetMs) else null,
+                "callTimeoutMs" to settings.callTimeoutMs, "corpusEntries" to settings.corpus.size, "budgetMs" to budgetMs) else null,
             "startedAt" to Instant.now().toString(),
         )
         client.start(job, environment)
@@ -177,6 +191,7 @@ class JobRunner(
 
         if (analysis) return completeReport(job, result, out.resolve("analysis.json"), "ANALYSIS_REPORT", "analyzer")
         if (fuzz) return completeReport(job, result, out.resolve("fuzz.json"), "FUZZ_REPORT", "fuzzer")
+        if (mutation) return completeReport(job, result, out.resolve("mutation.json"), "MUTATION_REPORT", "mutation runner")
 
         val junit = out.resolve("junit.xml")
         var testRun: TestRunReport? = null

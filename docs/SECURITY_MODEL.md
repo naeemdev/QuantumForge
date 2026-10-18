@@ -82,6 +82,12 @@ a hostile-code boundary. The UI shows a warning on runs that used `dev-process`.
 - The fuzz report is untrusted like the analysis report: oracle names, fingerprints, path and identifier shapes, re-run counts, input sizes (64 KB each) and uniqueness are validated, and text is truncated, before anything is stored.
 - The replay corpus is built by the API from the project's own reproductions; callers cannot supply corpus entries.
 
+## Mutation testing
+
+- Mutation testing runs the project's own tests once per mutant, so like fuzzing it exists only as a sandboxed job. Work copies are written to the job's output mount (the source mount stays read-only) and removed before the report is uploaded; `node_modules` is linked, not copied.
+- Each test run is a separate process group killed on its time limit (three times the baseline plus two seconds, at least five seconds).
+- The report is validated like the others: operator and status enums, mutant id and path shapes, uniqueness, and stats that must match the mutants.
+
 ## Transport and headers
 
 - The API is stateless with bearer tokens only, so no cookies are issued. CSRF protection is therefore disabled deliberately.

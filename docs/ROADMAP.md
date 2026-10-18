@@ -22,6 +22,6 @@ corpus says nothing about precision or recall on unseen code. Measuring that nee
 held-out corpus of original samples the rule authors have not seen (backlog N13).
 
 M3 status: type-driven fuzzing with shrinking, timeout/crash detection, a replay
-corpus, reproductions with re-runs and generated regression tests, and campaign
-management are done; the acceptance criterion is met for D6. Mutation testing and
-property-based generation from user-written properties are still open.
+corpus, reproductions with re-runs and generated regression tests, campaign
+management and mutation testing are done; the acceptance criterion is met for D6.
+Property-based testing from user-written properties is still open.
