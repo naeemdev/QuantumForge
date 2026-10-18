@@ -125,6 +125,7 @@ export function useSubmitTestRun(projectId: string) {
               cpuMillis: 1000,
               maxOutputBytes: 1048576,
               fuzz: null,
+              mutation: null,
             },
           },
         }),
@@ -352,6 +353,40 @@ export function useSubmitFuzzCampaign(projectId: string) {
       ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["fuzz-campaigns"] });
+      void qc.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+}
+
+export function useMutationRuns(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["mutation-runs", projectId],
+    queryFn: () => call(api.GET("/api/v1/projects/{projectId}/mutation-runs", { params: { path: { projectId: projectId! }, query: { size: 20 } } })),
+    enabled: projectId != null,
+    refetchInterval: (query) => (query.state.data?.items.some((r) => !TERMINAL_JOB_STATES.includes(r.job.state)) ? 2000 : false),
+  });
+}
+
+export function useMutationRun(jobId: string) {
+  return useQuery({
+    queryKey: ["mutation-run", jobId],
+    queryFn: () => call(api.GET("/api/v1/mutation-runs/{id}", { params: { path: { id: jobId } } })),
+    refetchInterval: (query) => (query.state.data && TERMINAL_JOB_STATES.includes(query.state.data.job.state) ? false : 2000),
+  });
+}
+
+export function useSubmitMutationRun(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { snapshotId?: string; idempotencyKey: string; seed: number; maxMutants: number; testPatterns: string[] }) =>
+      call(
+        api.POST("/api/v1/projects/{projectId}/mutation-runs", {
+          params: { path: { projectId }, header: { "Idempotency-Key": body.idempotencyKey } },
+          body: { snapshotId: body.snapshotId, seed: body.seed, maxMutants: body.maxMutants, testPatterns: body.testPatterns, priority: 0 },
+        }),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["mutation-runs"] });
       void qc.invalidateQueries({ queryKey: ["jobs"] });
     },
   });

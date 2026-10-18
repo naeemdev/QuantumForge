@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 const milestones = [
   { id: "M1", title: "Platform foundation", status: "Available", items: ["Organizations, roles and API tokens", "Secure source snapshot ingestion", "Isolated test execution with evidence", "Job queue with leasing, retries and cancellation"] },
   { id: "M2", title: "Code intelligence", status: "Available", items: ["TypeScript language adapter", "Symbol and dependency indexing", "Rule-based static analysis", "Findings explorer and Monaco source viewer"] },
-  { id: "M3", title: "Break My Code", status: "In progress", items: ["Type-driven fuzzing with input shrinking (available)", "Reproducible defect records with regression tests (available)", "Property-based test generation", "Mutation testing"] },
+  { id: "M3", title: "Break My Code", status: "In progress", items: ["Type-driven fuzzing with input shrinking (available)", "Reproducible defect records with regression tests (available)", "Mutation testing with survivor reports (available)", "Property-based test generation"] },
   { id: "M4", title: "Repair verification", status: "Planned", items: ["Patch ingestion", "Baseline versus candidate comparison", "Regression detection", "CI quality gates"] },
   { id: "M5", title: "Multi-language engineering", status: "Planned", items: ["Kotlin analysis", "OCaml analysis components", "Fortran numerical verification", "COBOL legacy laboratory"] },
   { id: "M6", title: "Advanced intelligence", status: "Planned", items: ["AI-assisted explanations and repair proposals", "Formal verification", "WebGL architecture graph"] },

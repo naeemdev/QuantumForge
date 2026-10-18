@@ -68,3 +68,7 @@ export type FuzzCampaignView = Schemas["FuzzCampaignView"];
 export type FuzzCampaignSummary = Schemas["FuzzCampaignSummary"];
 export type FuzzCampaignDetail = Schemas["FuzzCampaignDetail"];
 export type FuzzTargetView = Schemas["FuzzTargetView"];
+export type MutationRunView = Schemas["MutationRunView"];
+export type MutationRunSummary = Schemas["MutationRunSummary"];
+export type MutationRunDetail = Schemas["MutationRunDetail"];
+export type MutantView = Schemas["MutantView"];
