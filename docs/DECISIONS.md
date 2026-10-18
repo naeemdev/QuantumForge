@@ -145,3 +145,16 @@ resolves a fuzzing finding and a campaign never resolves a static one.
 every fresh re-run reproduced it), `REPRODUCED` (every one of the fresh re-runs
 failed the same way). The level is stored per finding and shown wherever the
 finding appears.
+
+### D-026 Mutants are judged only by tests that already pass
+Real suites often have failing tests (the bug corpus has six). Requiring a green
+baseline would make mutation testing useless exactly where it is most needed, and
+counting a mutant as killed by an already failing test would inflate the score. The
+runner records per-test results on the unmutated code; only tests that passed there
+can kill a mutant, and the failing ones are listed next to the score.
+
+### D-027 Surviving mutants are not findings
+A survivor says something about the tests, and some survivors are equivalent
+mutants that no test could detect. Turning them into findings would mix test-suite
+quality into the defect list and its lifecycle. They are stored per run and shown on
+the run page instead.

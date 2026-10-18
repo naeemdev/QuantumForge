@@ -161,8 +161,11 @@ Milestone 1 broken into tasks, in dependency order. Status: ✅ done · 🔶 par
 - **Files:** `apps/web/src/app/(app)/break-my-code/**`, `components/fuzzing.tsx`, findings pages
 - **Tests:** Playwright `break-my-code.spec.ts`.
 
-### M3-T4 ⬜ Mutation testing
-- Operators: comparison, arithmetic, condition removal, constants, call removal. Run the project's tests against each mutant in the sandbox; report killed/survived with the surviving diff.
+### M3-T4 ✅ Mutation testing
+- **Files:** `language-packs/typescript/src/mutate/**`, `V6__mutation_testing.sql`, `mutation/*`, worker `JobRunner.kt`, `break-my-code/mutation/[jobId]`
+- **Details:** Eight operators; per-test baseline so only passing tests can kill (D-026); parallel work copies; timeouts; deterministic sampling above the mutant limit; survivors stored per run, not as findings (D-027).
+- **Tests:** `test/mutate.test.ts` (6, including the corpus), `MutationTestingTest`, `MutationReportTest`, `ContainerExecutionTest` (CI), Playwright `mutation.spec.ts`.
+- **Follow-up:** coverage-based test selection, so each mutant runs only the tests that reach it.
 
 ### M3-T5 ⬜ Property-based tests
 - Let users declare properties (e.g. `roundCurrency(x)` within half a cent of `x`) that the generator checks, which is what generic oracles cannot do (D1).

@@ -116,4 +116,17 @@ passes once `D6.patch` is applied. The fuzzer's oracles are generic (they were n
 written for this corpus), but this sample is still too small to measure anything
 beyond regression.
 
+## Mutation testing results (mutation runner 0.1.0)
+
+72 mutants, all run against the 12 tests that pass on the shipped tree (the 6 defect
+tests already fail and cannot kill anything): 56 killed, 1 timed out, 15 survived,
+score 79.2%. Survivors worth reading:
+
+| Survivor | What it shows |
+|---|---|
+| `orders.ts` `await inventory.reserve(...)` removed | No test checks that placing an order reserves stock |
+| `cart.ts` `line.sku === sku` → `true` | Merging lines is only tested with a single SKU |
+| `money.ts` tax-rate bounds `< 0`, `> 100` moved | The rates 0 and 100 themselves are never tested |
+| `money.ts` `toFixed(2)` → `toFixed(3)` | Only the D1 test covers rounding precision, and it already fails |
+
 Provenance: original code written for this repository; no third-party code.

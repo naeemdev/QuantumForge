@@ -6,7 +6,7 @@ _Last updated: 2026-10-17_
 |---|---|
 | M1 Foundation | Complete |
 | M2 Code intelligence | Complete for TypeScript/JavaScript |
-| M3 Break My Code | In progress: fuzzing, reproductions and campaigns done; mutation and property-based testing open |
+| M3 Break My Code | In progress: fuzzing, reproductions, campaigns and mutation testing done; property-based testing open |
 | M4–M7 | Not started |
 
 ## Milestone 3: Break My Code
@@ -22,6 +22,11 @@ What a campaign on `sample-commerce-api` does:
 - **Lifecycle:** another seed replays the stored input first and still reproduces it; a static analysis of the fixed code does not touch it; a campaign on the fixed code replays the input, sees it pass and marks the finding `FIXED`; fuzzing the older snapshot again does not reopen it.
 - **Limits, stated in every report:** generic oracles only (D1, D2 are out of reach), classes/callbacks/generics skipped (D3, D4, D5), no failures ≠ correct.
 
+Mutation testing on the same sample (`MutationTestingTest`, `mutation` browser test):
+72 mutants scored against the 12 passing tests; 15 survive, including the removal of
+`inventory.reserve` from `placeOrder`, which no test checks. The six failing defect
+tests are excluded from the score and listed next to it. Details in `DEFECTS.md`.
+
 ## Milestone 2: Code intelligence
 
 Acceptance: *a real TypeScript repository can be analysed and its actual symbols,
@@ -35,21 +40,21 @@ regression check, not evidence of accuracy on other code (backlog N13).
 
 | Suite | Tests | Result |
 |---|---|---|
-| Backend (API + worker, JUnit) | 49 | pass; 4 Docker tests and the S3 contract test skip without Docker / `QF_TEST_S3_ENDPOINT` (all run in CI) |
-| TypeScript adapter and fuzzer (`node:test`) | 25 | pass |
+| Backend (API + worker, JUnit) | 52 | pass; 4 Docker tests and the S3 contract test skip without Docker / `QF_TEST_S3_ENDPOINT` (all run in CI) |
+| TypeScript adapter, fuzzer and mutation runner (`node:test`) | 31 | pass |
 | Web: typecheck, lint, production build | — | pass |
-| Browser end to end (Playwright) | 3 | pass |
+| Browser end to end (Playwright) | 4 | pass |
 | Bug corpus verification script | — | pass |
 
 ## Verified only in CI
 
 There is no Docker daemon here, so the container images and the container sandbox
 tests (`ContainerSandboxTest`, `ContainerExecutionTest`, now including a fuzz
-campaign) run only in CI. `container-gvisor` is not tested anywhere yet (no runsc
+campaign and a mutation run) run only in CI. `container-gvisor` is not tested anywhere yet (no runsc
 on CI runners). OIDC sign-in against a real identity provider has not been exercised.
 
 ## Next
 
-1. M3: mutation testing (M3-T4), then user-declared properties (M3-T5)
+1. M3: user-declared properties (M3-T5), coverage-based test selection for mutation runs
 2. N3 row-level security, N7 encrypted private Git credentials
 3. M4 repair verification

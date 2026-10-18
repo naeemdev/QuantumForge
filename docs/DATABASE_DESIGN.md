@@ -64,6 +64,12 @@ The migrations are the source of truth; this document explains the reasoning.
 - **defect_reproductions** — one per failure per campaign: oracle, message, stack, minimal and original input (tagged JSON), shrink steps, re-run attempts and how many reproduced, and the generated regression test. The latest one per open finding is the input replayed by the next campaign.
 - Job type `FUZZ_CAMPAIGN` and artifact kind `FUZZ_REPORT`.
 
+### Mutation testing (V6)
+
+- **mutation_runs** — one per successful `MUTATION_TEST` job: engine, seed, mutant limit, test patterns, the baseline (tests passed and failed on the unmutated code, with the failing names), counts, score (`numeric(5,1)`, null when nothing was scored), operators and limitations. `not_run_reason` explains a run without mutants (no tests, no passing test, baseline timed out).
+- **mutation_results** — one row per mutant: location, operator, original and replacement text, enclosing symbol, `KILLED`/`SURVIVED`/`TIMEOUT`/`ERROR` and the test that killed it.
+- Job type `MUTATION_TEST`, artifact kind `MUTATION_REPORT`. Results are not findings (D-027).
+
 ## Transaction boundaries
 
 - Ingestion validates and uploads blobs **outside** any transaction; only the final metadata insert is transactional, and it uses `ON CONFLICT DO NOTHING` so concurrent identical imports converge on one snapshot.
@@ -76,7 +82,7 @@ The migrations are the source of truth; this document explains the reasoning.
 ## Planned tables
 
 Added when their modules are built, not before: `teams`, `team_members`,
-`repository_credentials` (encrypted); `mutation_runs`, `mutation_results` (M3);
+`repository_credentials` (encrypted);
 `repair_proposals`, `repair_verification_runs` (M4); `subscription_plans`,
 `subscriptions`, `usage_events`, `usage_aggregates`, `quota_policies` (M7).
 
