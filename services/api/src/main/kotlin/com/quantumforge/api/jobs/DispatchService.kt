@@ -20,6 +20,8 @@ import com.quantumforge.api.common.uuid
 import com.quantumforge.api.config.QuantumForgeProperties
 import com.quantumforge.api.fuzzing.FuzzIngestion
 import com.quantumforge.api.fuzzing.FuzzSummary
+import com.quantumforge.api.mutation.MutationIngestion
+import com.quantumforge.api.mutation.MutationSummary
 import com.quantumforge.api.security.WorkerIdentity
 import com.quantumforge.api.storage.BlobKeys
 import com.quantumforge.api.storage.BlobStore
@@ -76,6 +78,7 @@ class DispatchService(
     private val tests: TestResultStore,
     private val ingestion: ReportIngestion,
     private val fuzzIngestion: FuzzIngestion,
+    private val mutationIngestion: MutationIngestion,
     private val blobs: BlobStore,
     private val audit: AuditService,
     private val properties: QuantumForgeProperties,
@@ -215,7 +218,7 @@ class DispatchService(
         content: InputStream,
     ): UUID {
         if (!Regex("^[A-Za-z0-9._-]{1,100}$").matches(name) || name.startsWith(".")) throw BadRequestException("invalid_name", "Invalid artifact name")
-        if (kind !in setOf("STDOUT", "STDERR", "JUNIT_XML", "ENVIRONMENT", "ANALYSIS_REPORT", "FUZZ_REPORT", "OTHER")) throw BadRequestException("invalid_kind", "Invalid artifact kind")
+        if (kind !in setOf("STDOUT", "STDERR", "JUNIT_XML", "ENVIRONMENT", "ANALYSIS_REPORT", "FUZZ_REPORT", "MUTATION_REPORT", "OTHER")) throw BadRequestException("invalid_kind", "Invalid artifact kind")
         if (!Regex("^[a-z]+/[a-z0-9.+-]+$").matches(mediaType)) throw BadRequestException("invalid_media_type", "Invalid media type")
         val ctx = requireLease(worker, attemptId, token, lock = false)
         val existing = jdbc.sql("SELECT id FROM job_artifacts WHERE attempt_id = :a AND name = :n").param("a", attemptId).param("n", name)
@@ -310,6 +313,20 @@ class DispatchService(
             }
         }
 
+        var mutationSummary: MutationSummary? = null
+        if (ctx.jobType == JobType.MUTATION_TEST && report.outcome == AttemptOutcome.SUCCEEDED) {
+            try {
+                val mutationReport = mutationIngestion.loadReport(attemptId, properties.execution.maxArtifactBytes)
+                mutationSummary = mutationIngestion.ingest(
+                    IngestionTarget(ctx.tenantId, ctx.organizationId, ctx.projectId, ctx.snapshotId, ctx.jobId, attemptId),
+                    mutationReport,
+                )
+            } catch (e: InvalidReportException) {
+                log.warn("Rejected mutation report for job {}: {}", ctx.jobId, e.message)
+                report = report.copy(outcome = AttemptOutcome.FAILED, errorMessage = "Invalid mutation report: ${e.message}")
+            }
+        }
+
         jdbc.sql(
             """
             UPDATE job_attempts SET outcome = :outcome, exit_code = :exit, duration_ms = :duration, error_message = :error, finished_at = :now
@@ -331,6 +348,7 @@ class DispatchService(
             "tests" to testCounts,
             "analysis" to analysisSummary,
             "fuzz" to fuzzSummary,
+            "mutation" to mutationSummary,
             "worker" to worker.name,
             "isolationMode" to worker.isolationMode,
         )

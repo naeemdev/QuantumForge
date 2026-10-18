@@ -243,11 +243,98 @@
         }
       }
     },
+    "/api/v1/projects/{projectId}/mutation-runs" : {
+      "get" : {
+        "tags" : [ "Break My Code" ],
+        "summary" : "Mutation testing runs of a project, newest first",
+        "operationId" : "list_1",
+        "parameters" : [ {
+          "name" : "projectId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageMutationRunSummary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Break My Code" ],
+        "summary" : "Queue a mutation testing run against a snapshot (defaults to the latest). Supports Idempotency-Key.",
+        "description" : "Each mutant is checked against the project's node:test suite. Only tests that pass on the unmutated code can kill a mutant.",
+        "operationId" : "submit",
+        "parameters" : [ {
+          "name" : "projectId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SubmitMutationRunRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Job"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{projectId}/fuzz-campaigns" : {
       "get" : {
         "tags" : [ "Break My Code" ],
         "summary" : "Fuzz campaigns of a project, newest first",
-        "operationId" : "list_1",
+        "operationId" : "list_2",
         "parameters" : [ {
           "name" : "projectId",
           "in" : "path",
@@ -290,7 +377,7 @@
         "tags" : [ "Break My Code" ],
         "summary" : "Queue a fuzz campaign against a snapshot (defaults to the latest). Supports Idempotency-Key.",
         "description" : "The project's open fuzzing findings are replayed first from their stored reproduction inputs, so a campaign on a fixed snapshot resolves them.",
-        "operationId" : "submit",
+        "operationId" : "submit_1",
         "parameters" : [ {
           "name" : "projectId",
           "in" : "path",
@@ -334,7 +421,7 @@
       "post" : {
         "tags" : [ "Code intelligence" ],
         "summary" : "Queue a static analysis of a snapshot (defaults to the latest). Supports Idempotency-Key.",
-        "operationId" : "submit_1",
+        "operationId" : "submit_2",
         "parameters" : [ {
           "name" : "projectId",
           "in" : "path",
@@ -1677,7 +1764,7 @@
     "/api/v1/organizations/{organizationId}/audit-events" : {
       "get" : {
         "tags" : [ "Audit" ],
-        "operationId" : "list_2",
+        "operationId" : "list_3",
         "parameters" : [ {
           "name" : "organizationId",
           "in" : "path",
@@ -1790,6 +1877,64 @@
         }
       }
     },
+    "/api/v1/mutation-runs/{id}" : {
+      "get" : {
+        "tags" : [ "Break My Code" ],
+        "summary" : "A mutation run by job id: baseline, score and every mutant's outcome (survivors first)",
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MutationRunDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mutation-runs/{id}/artifacts" : {
+      "get" : {
+        "tags" : [ "Break My Code" ],
+        "operationId" : "artifacts",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/JobArtifact"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me" : {
       "get" : {
         "tags" : [ "Identity" ],
@@ -1811,7 +1956,7 @@
     "/api/v1/jobs" : {
       "get" : {
         "tags" : [ "Jobs" ],
-        "operationId" : "list_3",
+        "operationId" : "list_4",
         "parameters" : [ {
           "name" : "organizationId",
           "in" : "query",
@@ -1845,7 +1990,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS", "FUZZ_CAMPAIGN" ]
+            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS", "FUZZ_CAMPAIGN", "MUTATION_TEST" ]
           }
         }, {
           "name" : "page",
@@ -1881,7 +2026,7 @@
     "/api/v1/jobs/{id}" : {
       "get" : {
         "tags" : [ "Jobs" ],
-        "operationId" : "get_1",
+        "operationId" : "get_2",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2019,7 +2164,7 @@
     "/api/v1/jobs/{id}/artifacts" : {
       "get" : {
         "tags" : [ "Jobs" ],
-        "operationId" : "artifacts",
+        "operationId" : "artifacts_1",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2086,7 +2231,7 @@
       "get" : {
         "tags" : [ "Break My Code" ],
         "summary" : "A fuzz campaign by job id: targets tested and skipped, and every failure with its reproduction",
-        "operationId" : "get_2",
+        "operationId" : "get_3",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2113,7 +2258,7 @@
     "/api/v1/fuzz-campaigns/{id}/artifacts" : {
       "get" : {
         "tags" : [ "Break My Code" ],
-        "operationId" : "artifacts_1",
+        "operationId" : "artifacts_2",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2188,7 +2333,7 @@
     "/api/v1/analyses/{id}" : {
       "get" : {
         "tags" : [ "Code intelligence" ],
-        "operationId" : "get_3",
+        "operationId" : "get_4",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2258,7 +2403,7 @@
     "/api/v1/analyses/{id}/artifacts" : {
       "get" : {
         "tags" : [ "Code intelligence" ],
-        "operationId" : "artifacts_2",
+        "operationId" : "artifacts_3",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2517,7 +2662,7 @@
         "properties" : {
           "preset" : {
             "type" : "string",
-            "enum" : [ "NODE_TEST", "TS_ANALYSIS", "TS_FUZZ" ]
+            "enum" : [ "NODE_TEST", "TS_ANALYSIS", "TS_FUZZ", "TS_MUTATION" ]
           },
           "testPatterns" : {
             "type" : "array",
@@ -2547,9 +2692,16 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "mutation" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/MutationSettings"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
-        "required" : [ "cpuMillis", "fuzz", "maxOutputBytes", "memoryMb", "preset", "testPatterns" ]
+        "required" : [ "cpuMillis", "fuzz", "maxOutputBytes", "memoryMb", "mutation", "preset", "testPatterns" ]
       },
       "FuzzCorpusEntry" : {
         "type" : "object",
@@ -2594,6 +2746,20 @@
         },
         "required" : [ "callTimeoutMs", "corpus", "iterationsPerTarget", "seed" ]
       },
+      "MutationSettings" : {
+        "type" : "object",
+        "properties" : {
+          "seed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "maxMutants" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "maxMutants", "seed" ]
+      },
       "SubmitTestRunRequest" : {
         "type" : "object",
         "properties" : {
@@ -2633,7 +2799,7 @@
           },
           "jobType" : {
             "type" : "string",
-            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS", "FUZZ_CAMPAIGN" ]
+            "enum" : [ "TEST_EXECUTION", "STATIC_ANALYSIS", "FUZZ_CAMPAIGN", "MUTATION_TEST" ]
           },
           "state" : {
             "type" : "string",
@@ -2701,6 +2867,47 @@
           }
         },
         "required" : [ "attemptCount", "cancelRequested", "config", "createdAt", "createdBy", "id", "jobType", "maxAttempts", "organizationId", "priority", "projectId", "queuedAt", "snapshotId", "state", "timeoutSeconds", "updatedAt", "version" ]
+      },
+      "SubmitMutationRunRequest" : {
+        "type" : "object",
+        "properties" : {
+          "snapshotId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "testPatterns" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 20,
+            "minItems" : 0
+          },
+          "seed" : {
+            "type" : "integer",
+            "format" : "int64",
+            "maximum" : 2147483647,
+            "minimum" : 1
+          },
+          "maxMutants" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 5000,
+            "minimum" : 1
+          },
+          "timeoutSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "maximum" : 1800,
+            "minimum" : 1
+          },
+          "priority" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 100,
+            "minimum" : -100
+          }
+        }
       },
       "SubmitFuzzCampaignRequest" : {
         "type" : "object",
@@ -3649,6 +3856,183 @@
         },
         "required" : [ "items", "page", "size", "total" ]
       },
+      "MutationBaseline" : {
+        "type" : "object",
+        "properties" : {
+          "tests" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "passed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "failed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "durationMs" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "failingTests" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "durationMs", "failed", "failingTests", "passed", "tests" ]
+      },
+      "MutationOperatorInfo" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "description", "id" ]
+      },
+      "MutationRunSummary" : {
+        "type" : "object",
+        "properties" : {
+          "job" : {
+            "$ref" : "#/components/schemas/Job"
+          },
+          "run" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/MutationRunView"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "job", "run" ]
+      },
+      "MutationRunView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "jobId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "snapshotId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "engineId" : {
+            "type" : "string"
+          },
+          "engineVersion" : {
+            "type" : "string"
+          },
+          "seed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "maxMutants" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "testPatterns" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "baseline" : {
+            "$ref" : "#/components/schemas/MutationBaseline"
+          },
+          "notRunReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "mutantsFound" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "killed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "survived" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "timedOut" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "errors" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "score" : {
+            "type" : [ "number", "null" ],
+            "format" : "double"
+          },
+          "durationMs" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "operators" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MutationOperatorInfo"
+            }
+          },
+          "limitations" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "baseline", "createdAt", "durationMs", "engineId", "engineVersion", "errors", "id", "jobId", "killed", "limitations", "maxMutants", "mutantsFound", "operators", "projectId", "seed", "snapshotId", "survived", "testPatterns", "timedOut", "total" ]
+      },
+      "PageMutationRunSummary" : {
+        "type" : "object",
+        "description" : "A page of results",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MutationRunSummary"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "items", "page", "size", "total" ]
+      },
       "FuzzCampaignSummary" : {
         "type" : "object",
         "properties" : {
@@ -4391,6 +4775,171 @@
         },
         "required" : [ "items", "page", "size", "total" ]
       },
+      "JobAttempt" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "attemptNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "workerName" : {
+            "type" : "string"
+          },
+          "isolationMode" : {
+            "type" : "string"
+          },
+          "leasedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "leaseExpiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "heartbeatAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "startedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "finishedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "outcome" : {
+            "type" : [ "string", "null" ]
+          },
+          "exitCode" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "durationMs" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "environment" : {
+            "type" : [ "object", "null" ],
+            "additionalProperties" : { }
+          },
+          "errorMessage" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "attemptNumber", "id", "isolationMode", "leaseExpiresAt", "leasedAt", "workerName" ]
+      },
+      "MutantView" : {
+        "type" : "object",
+        "properties" : {
+          "mutantId" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "line" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "column" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "operator" : {
+            "type" : "string"
+          },
+          "original" : {
+            "type" : "string"
+          },
+          "replacement" : {
+            "type" : "string"
+          },
+          "symbolKey" : {
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "killedBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "durationMs" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "column", "durationMs", "line", "mutantId", "operator", "original", "path", "replacement", "status" ]
+      },
+      "MutationRunDetail" : {
+        "type" : "object",
+        "properties" : {
+          "job" : {
+            "$ref" : "#/components/schemas/Job"
+          },
+          "attempts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JobAttempt"
+            }
+          },
+          "run" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/MutationRunView"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "mutants" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MutantView"
+            }
+          }
+        },
+        "required" : [ "attempts", "job", "mutants", "run" ]
+      },
+      "JobArtifact" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "attemptId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "mediaType" : {
+            "type" : "string"
+          },
+          "sizeBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "sha256" : {
+            "type" : "string"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "attemptId", "createdAt", "id", "kind", "mediaType", "name", "sha256", "sizeBytes", "truncated" ]
+      },
       "MeResponse" : {
         "type" : "object",
         "properties" : {
@@ -4466,64 +5015,6 @@
           }
         },
         "required" : [ "items", "page", "size", "total" ]
-      },
-      "JobAttempt" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "attemptNumber" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "workerName" : {
-            "type" : "string"
-          },
-          "isolationMode" : {
-            "type" : "string"
-          },
-          "leasedAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "leaseExpiresAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "heartbeatAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
-          "startedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
-          "finishedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
-          "outcome" : {
-            "type" : [ "string", "null" ]
-          },
-          "exitCode" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
-          },
-          "durationMs" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int64"
-          },
-          "environment" : {
-            "type" : [ "object", "null" ],
-            "additionalProperties" : { }
-          },
-          "errorMessage" : {
-            "type" : [ "string", "null" ]
-          }
-        },
-        "required" : [ "attemptNumber", "id", "isolationMode", "leaseExpiresAt", "leasedAt", "workerName" ]
       },
       "JobDetail" : {
         "type" : "object",
@@ -4658,43 +5149,6 @@
           }
         },
         "required" : [ "data", "eventType", "id", "message", "occurredAt" ]
-      },
-      "JobArtifact" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "attemptId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "kind" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "mediaType" : {
-            "type" : "string"
-          },
-          "sizeBytes" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "sha256" : {
-            "type" : "string"
-          },
-          "truncated" : {
-            "type" : "boolean"
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          }
-        },
-        "required" : [ "attemptId", "createdAt", "id", "kind", "mediaType", "name", "sha256", "sizeBytes", "truncated" ]
       },
       "FuzzCampaignDetail" : {
         "type" : "object",

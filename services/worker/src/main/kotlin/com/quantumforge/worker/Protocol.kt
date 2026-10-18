@@ -29,7 +29,10 @@ data class TestExecutionConfig(
     val cpuMillis: Int = 1000,
     val maxOutputBytes: Long = 1024 * 1024,
     val fuzz: FuzzSettings? = null,
+    val mutation: MutationSettings? = null,
 )
+
+data class MutationSettings(val seed: Long = 1, val maxMutants: Int = 500)
 
 data class FuzzSettings(
     val seed: Long = 1,

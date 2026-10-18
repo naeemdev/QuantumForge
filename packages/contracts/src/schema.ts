@@ -69,6 +69,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/mutation-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mutation testing runs of a project, newest first */
+        get: operations["list_1"];
+        put?: never;
+        /**
+         * Queue a mutation testing run against a snapshot (defaults to the latest). Supports Idempotency-Key.
+         * @description Each mutant is checked against the project's node:test suite. Only tests that pass on the unmutated code can kill a mutant.
+         */
+        post: operations["submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{projectId}/fuzz-campaigns": {
         parameters: {
             query?: never;
@@ -77,13 +98,13 @@ export interface paths {
             cookie?: never;
         };
         /** Fuzz campaigns of a project, newest first */
-        get: operations["list_1"];
+        get: operations["list_2"];
         put?: never;
         /**
          * Queue a fuzz campaign against a snapshot (defaults to the latest). Supports Idempotency-Key.
          * @description The project's open fuzzing findings are replayed first from their stored reproduction inputs, so a campaign on a fixed snapshot resolves them.
          */
-        post: operations["submit"];
+        post: operations["submit_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -100,7 +121,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Queue a static analysis of a snapshot (defaults to the latest). Supports Idempotency-Key. */
-        post: operations["submit_1"];
+        post: operations["submit_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -595,7 +616,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_2"];
+        get: operations["list_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -636,6 +657,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mutation-runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A mutation run by job id: baseline, score and every mutant's outcome (survivors first) */
+        get: operations["get_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mutation-runs/{id}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["artifacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -659,7 +713,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_3"];
+        get: operations["list_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -675,7 +729,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_1"];
+        get: operations["get_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -739,7 +793,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["artifacts"];
+        get: operations["artifacts_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -772,7 +826,7 @@ export interface paths {
             cookie?: never;
         };
         /** A fuzz campaign by job id: targets tested and skipped, and every failure with its reproduction */
-        get: operations["get_2"];
+        get: operations["get_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -788,7 +842,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["artifacts_1"];
+        get: operations["artifacts_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -836,7 +890,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_3"];
+        get: operations["get_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -868,7 +922,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["artifacts_2"];
+        get: operations["artifacts_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -979,7 +1033,7 @@ export interface components {
         };
         ExecutionConfig: {
             /** @enum {string} */
-            preset: "NODE_TEST" | "TS_ANALYSIS" | "TS_FUZZ";
+            preset: "NODE_TEST" | "TS_ANALYSIS" | "TS_FUZZ" | "TS_MUTATION";
             testPatterns: string[];
             /** Format: int32 */
             timeoutSeconds?: number | null;
@@ -990,6 +1044,7 @@ export interface components {
             /** Format: int64 */
             maxOutputBytes: number;
             fuzz: components["schemas"]["FuzzSettings"] | null;
+            mutation: components["schemas"]["MutationSettings"] | null;
         };
         FuzzCorpusEntry: {
             fingerprint: string;
@@ -1005,6 +1060,12 @@ export interface components {
             /** Format: int32 */
             callTimeoutMs: number;
             corpus: components["schemas"]["FuzzCorpusEntry"][];
+        };
+        MutationSettings: {
+            /** Format: int64 */
+            seed: number;
+            /** Format: int32 */
+            maxMutants: number;
         };
         SubmitTestRunRequest: {
             /** Format: uuid */
@@ -1023,7 +1084,7 @@ export interface components {
             /** Format: uuid */
             snapshotId: string;
             /** @enum {string} */
-            jobType: "TEST_EXECUTION" | "STATIC_ANALYSIS" | "FUZZ_CAMPAIGN";
+            jobType: "TEST_EXECUTION" | "STATIC_ANALYSIS" | "FUZZ_CAMPAIGN" | "MUTATION_TEST";
             /** @enum {string} */
             state: "QUEUED" | "LEASED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "TIMED_OUT" | "CANCELLED" | "INFRA_ERROR";
             /** Format: int32 */
@@ -1055,6 +1116,19 @@ export interface components {
             updatedAt: string;
             /** Format: int64 */
             version: number;
+        };
+        SubmitMutationRunRequest: {
+            /** Format: uuid */
+            snapshotId?: string | null;
+            testPatterns?: string[];
+            /** Format: int64 */
+            seed?: number;
+            /** Format: int32 */
+            maxMutants?: number;
+            /** Format: int32 */
+            timeoutSeconds?: number | null;
+            /** Format: int32 */
+            priority?: number;
         };
         SubmitFuzzCampaignRequest: {
             /** Format: uuid */
@@ -1408,6 +1482,74 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        MutationBaseline: {
+            /** Format: int32 */
+            tests: number;
+            /** Format: int32 */
+            passed: number;
+            /** Format: int32 */
+            failed: number;
+            /** Format: int64 */
+            durationMs: number;
+            failingTests: string[];
+        };
+        MutationOperatorInfo: {
+            id: string;
+            description: string;
+        };
+        MutationRunSummary: {
+            job: components["schemas"]["Job"];
+            run: components["schemas"]["MutationRunView"] | null;
+        };
+        MutationRunView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            jobId: string;
+            /** Format: uuid */
+            projectId: string;
+            /** Format: uuid */
+            snapshotId: string;
+            engineId: string;
+            engineVersion: string;
+            /** Format: int64 */
+            seed: number;
+            /** Format: int32 */
+            maxMutants: number;
+            testPatterns: string[];
+            baseline: components["schemas"]["MutationBaseline"];
+            notRunReason?: string | null;
+            /** Format: int32 */
+            mutantsFound: number;
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            killed: number;
+            /** Format: int32 */
+            survived: number;
+            /** Format: int32 */
+            timedOut: number;
+            /** Format: int32 */
+            errors: number;
+            /** Format: double */
+            score?: number | null;
+            /** Format: int64 */
+            durationMs: number;
+            operators: components["schemas"]["MutationOperatorInfo"][];
+            limitations: string[];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @description A page of results */
+        PageMutationRunSummary: {
+            items: components["schemas"]["MutationRunSummary"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+        };
         FuzzCampaignSummary: {
             job: components["schemas"]["Job"];
             campaign: components["schemas"]["FuzzCampaignView"] | null;
@@ -1706,33 +1848,6 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
-        MeResponse: {
-            /** Format: uuid */
-            id: string;
-            email?: string | null;
-            displayName?: string | null;
-            /** @enum {string} */
-            authMethod: "OIDC" | "DEV_LOGIN" | "API_TOKEN";
-            memberships: components["schemas"]["MembershipView"][];
-        };
-        MembershipView: {
-            /** Format: uuid */
-            organizationId: string;
-            organizationName: string;
-            organizationSlug: string;
-            role: string;
-            permissions: string[];
-        };
-        /** @description A page of results */
-        PageJob: {
-            items: components["schemas"]["Job"][];
-            /** Format: int32 */
-            page: number;
-            /** Format: int32 */
-            size: number;
-            /** Format: int64 */
-            total: number;
-        };
         JobAttempt: {
             /** Format: uuid */
             id: string;
@@ -1759,6 +1874,70 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             errorMessage?: string | null;
+        };
+        MutantView: {
+            mutantId: string;
+            path: string;
+            /** Format: int32 */
+            line: number;
+            /** Format: int32 */
+            column: number;
+            operator: string;
+            original: string;
+            replacement: string;
+            symbolKey?: string | null;
+            status: string;
+            killedBy?: string | null;
+            /** Format: int64 */
+            durationMs: number;
+        };
+        MutationRunDetail: {
+            job: components["schemas"]["Job"];
+            attempts: components["schemas"]["JobAttempt"][];
+            run: components["schemas"]["MutationRunView"] | null;
+            mutants: components["schemas"]["MutantView"][];
+        };
+        JobArtifact: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            attemptId: string;
+            kind: string;
+            name: string;
+            mediaType: string;
+            /** Format: int64 */
+            sizeBytes: number;
+            sha256: string;
+            truncated: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        MeResponse: {
+            /** Format: uuid */
+            id: string;
+            email?: string | null;
+            displayName?: string | null;
+            /** @enum {string} */
+            authMethod: "OIDC" | "DEV_LOGIN" | "API_TOKEN";
+            memberships: components["schemas"]["MembershipView"][];
+        };
+        MembershipView: {
+            /** Format: uuid */
+            organizationId: string;
+            organizationName: string;
+            organizationSlug: string;
+            role: string;
+            permissions: string[];
+        };
+        /** @description A page of results */
+        PageJob: {
+            items: components["schemas"]["Job"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
         };
         JobDetail: {
             job: components["schemas"]["Job"];
@@ -1814,21 +1993,6 @@ export interface components {
             };
             /** Format: date-time */
             occurredAt: string;
-        };
-        JobArtifact: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            attemptId: string;
-            kind: string;
-            name: string;
-            mediaType: string;
-            /** Format: int64 */
-            sizeBytes: number;
-            sha256: string;
-            truncated: boolean;
-            /** Format: date-time */
-            createdAt: string;
         };
         FuzzCampaignDetail: {
             job: components["schemas"]["Job"];
@@ -2059,12 +2223,65 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageFuzzCampaignSummary"];
+                    "application/json": components["schemas"]["PageMutationRunSummary"];
                 };
             };
         };
     };
     submit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubmitMutationRunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    list_2: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageFuzzCampaignSummary"];
+                };
+            };
+        };
+    };
+    submit_1: {
         parameters: {
             query?: never;
             header?: {
@@ -2092,7 +2309,7 @@ export interface operations {
             };
         };
     };
-    submit_1: {
+    submit_2: {
         parameters: {
             query?: never;
             header?: {
@@ -3003,7 +3220,7 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    list_3: {
         parameters: {
             query?: {
                 page?: number;
@@ -3075,6 +3292,50 @@ export interface operations {
             };
         };
     };
+    get_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MutationRunDetail"];
+                };
+            };
+        };
+    };
+    artifacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobArtifact"][];
+                };
+            };
+        };
+    };
     me: {
         parameters: {
             query?: never;
@@ -3095,13 +3356,13 @@ export interface operations {
             };
         };
     };
-    list_3: {
+    list_4: {
         parameters: {
             query: {
                 organizationId: string;
                 projectId?: string;
                 state?: ("QUEUED" | "LEASED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "TIMED_OUT" | "CANCELLED" | "INFRA_ERROR")[];
-                type?: "TEST_EXECUTION" | "STATIC_ANALYSIS" | "FUZZ_CAMPAIGN";
+                type?: "TEST_EXECUTION" | "STATIC_ANALYSIS" | "FUZZ_CAMPAIGN" | "MUTATION_TEST";
                 page?: number;
                 size?: number;
             };
@@ -3122,7 +3383,7 @@ export interface operations {
             };
         };
     };
-    get_1: {
+    get_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -3215,7 +3476,7 @@ export interface operations {
             };
         };
     };
-    artifacts: {
+    artifacts_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -3260,7 +3521,7 @@ export interface operations {
             };
         };
     };
-    get_2: {
+    get_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -3282,7 +3543,7 @@ export interface operations {
             };
         };
     };
-    artifacts_1: {
+    artifacts_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -3346,7 +3607,7 @@ export interface operations {
             };
         };
     };
-    get_3: {
+    get_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -3393,7 +3654,7 @@ export interface operations {
             };
         };
     };
-    artifacts_2: {
+    artifacts_3: {
         parameters: {
             query?: never;
             header?: never;
