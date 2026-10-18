@@ -2,17 +2,19 @@
   "name": "@quantumforge/lang-typescript",
   "version": "0.1.0",
   "private": true,
-  "description": "TypeScript/JavaScript language adapter: indexing, dependency and call graphs, complexity, static analysis rules and type-driven fuzzing.",
+  "description": "TypeScript/JavaScript language adapter: indexing, dependency and call graphs, complexity, static analysis rules, type-driven fuzzing and mutation testing.",
   "type": "module",
   "bin": {
     "qf-ts-analyze": "./src/cli.ts",
-    "qf-ts-fuzz": "./src/fuzz/cli.ts"
+    "qf-ts-fuzz": "./src/fuzz/cli.ts",
+    "qf-ts-mutate": "./src/mutate/cli.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --test \"test/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "analyze": "node --experimental-strip-types src/cli.ts",
-    "fuzz": "node --experimental-strip-types src/fuzz/cli.ts"
+    "fuzz": "node --experimental-strip-types src/fuzz/cli.ts",
+    "mutate": "node --experimental-strip-types src/mutate/cli.ts"
   },
   "dependencies": {
     "@quantumforge/language-sdk": "workspace:*",
