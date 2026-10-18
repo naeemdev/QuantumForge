@@ -56,21 +56,27 @@ The migrations are the source of truth; this document explains the reasoning.
 - **finding_status_history** — every transition with actor (user, API token or system), reason and the analysis that caused it.
 - New permission `finding.triage` (owner, admin, member).
 
+### Break My Code (V5)
+
+- **findings** gain `source` (`STATIC_ANALYSIS`, `FUZZING`) and `evidence_level` (`SUSPECTED`, `OBSERVED`, `REPRODUCED`). The lifecycle is evaluated per source.
+- **fuzz_campaigns** — one per successful `FUZZ_CAMPAIGN` job: engine and version, seed, iterations, call limit, corpus size, counts, oracles and limitations as reported.
+- **fuzz_targets** — every exported function the campaign found, `TESTED` with its counters or `SKIPPED` with the reason.
+- **defect_reproductions** — one per failure per campaign: oracle, message, stack, minimal and original input (tagged JSON), shrink steps, re-run attempts and how many reproduced, and the generated regression test. The latest one per open finding is the input replayed by the next campaign.
+- Job type `FUZZ_CAMPAIGN` and artifact kind `FUZZ_REPORT`.
+
 ## Transaction boundaries
 
 - Ingestion validates and uploads blobs **outside** any transaction; only the final metadata insert is transactional, and it uses `ON CONFLICT DO NOTHING` so concurrent identical imports converge on one snapshot.
 - Job admission locks the tenant row (`SELECT … FOR UPDATE`) so concurrent submissions cannot exceed `max_active_jobs`.
 - Dispatch uses `FOR UPDATE SKIP LOCKED` so several API instances can lease concurrently without blocking each other.
 - Worker reports lock the job row (`FOR UPDATE OF j`) to serialise with cancellation and the lease reaper.
-- Analysis ingestion runs inside the job-completion transaction: a job is `SUCCEEDED` exactly when its index and finding updates are stored.
+- Analysis and fuzz report ingestion run inside the job-completion transaction: a job is `SUCCEEDED` exactly when its index, campaign and finding updates are stored. Reports are fully validated before the first write.
 - Successful audit events commit with the change they describe; DENIED events use a separate transaction because the request's own transaction rolls back.
 
 ## Planned tables
 
 Added when their modules are built, not before: `teams`, `team_members`,
-`repository_credentials` (encrypted), `finding_evidence` (M3, reproduction
-artifacts); `fuzz_campaigns`,
-`fuzz_inputs`, `mutation_runs`, `mutation_results`, `defect_reproductions` (M3);
+`repository_credentials` (encrypted); `mutation_runs`, `mutation_results` (M3);
 `repair_proposals`, `repair_verification_runs` (M4); `subscription_plans`,
 `subscriptions`, `usage_events`, `usage_aggregates`, `quota_policies` (M7).
 

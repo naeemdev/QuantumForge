@@ -70,7 +70,7 @@ function TestRuns() {
                       <p className="font-mono text-[11px] text-fg-3">snapshot …{j.snapshotId.slice(-8)}</p>
                     </Td>
                     <Td><Link href={`/projects/${j.projectId}`} className="hover:text-fg hover:underline">{projectName(j.projectId)}</Link></Td>
-                    <Td><JobStateBadge state={j.state} /></Td>
+                    <Td><JobStateBadge state={j.state} jobType={j.jobType} /></Td>
                     <Td><TestCounts tests={j.resultSummary?.tests as Record<string, unknown> | undefined} /></Td>
                     <Td className="tabular text-xs">{j.attemptCount} / {j.maxAttempts}</Td>
                     <Td className="tabular text-right text-xs">{formatDuration(j.resultSummary?.durationMs as number | undefined)}</Td>

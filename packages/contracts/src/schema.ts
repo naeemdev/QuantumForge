@@ -69,6 +69,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/fuzz-campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fuzz campaigns of a project, newest first */
+        get: operations["list_1"];
+        put?: never;
+        /**
+         * Queue a fuzz campaign against a snapshot (defaults to the latest). Supports Idempotency-Key.
+         * @description The project's open fuzzing findings are replayed first from their stored reproduction inputs, so a campaign on a fixed snapshot resolves them.
+         */
+        post: operations["submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{projectId}/analyses": {
         parameters: {
             query?: never;
@@ -79,7 +100,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Queue a static analysis of a snapshot (defaults to the latest). Supports Idempotency-Key. */
-        post: operations["submit"];
+        post: operations["submit_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -574,7 +595,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_1"];
+        get: operations["list_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -638,7 +659,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_2"];
+        get: operations["list_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -743,6 +764,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fuzz-campaigns/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A fuzz campaign by job id: targets tested and skipped, and every failure with its reproduction */
+        get: operations["get_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuzz-campaigns/{id}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["artifacts_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/findings/{id}": {
         parameters: {
             query?: never;
@@ -782,7 +836,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_2"];
+        get: operations["get_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -814,7 +868,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["artifacts_1"];
+        get: operations["artifacts_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -925,7 +979,7 @@ export interface components {
         };
         ExecutionConfig: {
             /** @enum {string} */
-            preset: "NODE_TEST" | "TS_ANALYSIS";
+            preset: "NODE_TEST" | "TS_ANALYSIS" | "TS_FUZZ";
             testPatterns: string[];
             /** Format: int32 */
             timeoutSeconds?: number | null;
@@ -935,6 +989,22 @@ export interface components {
             cpuMillis: number;
             /** Format: int64 */
             maxOutputBytes: number;
+            fuzz: components["schemas"]["FuzzSettings"] | null;
+        };
+        FuzzCorpusEntry: {
+            fingerprint: string;
+            path: string;
+            exportName: string;
+            input: unknown[];
+        };
+        FuzzSettings: {
+            /** Format: int64 */
+            seed: number;
+            /** Format: int32 */
+            iterationsPerTarget: number;
+            /** Format: int32 */
+            callTimeoutMs: number;
+            corpus: components["schemas"]["FuzzCorpusEntry"][];
         };
         SubmitTestRunRequest: {
             /** Format: uuid */
@@ -953,7 +1023,7 @@ export interface components {
             /** Format: uuid */
             snapshotId: string;
             /** @enum {string} */
-            jobType: "TEST_EXECUTION" | "STATIC_ANALYSIS";
+            jobType: "TEST_EXECUTION" | "STATIC_ANALYSIS" | "FUZZ_CAMPAIGN";
             /** @enum {string} */
             state: "QUEUED" | "LEASED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "TIMED_OUT" | "CANCELLED" | "INFRA_ERROR";
             /** Format: int32 */
@@ -985,6 +1055,20 @@ export interface components {
             updatedAt: string;
             /** Format: int64 */
             version: number;
+        };
+        SubmitFuzzCampaignRequest: {
+            /** Format: uuid */
+            snapshotId?: string | null;
+            /** Format: int64 */
+            seed?: number;
+            /** Format: int32 */
+            iterationsPerTarget?: number;
+            /** Format: int32 */
+            callTimeoutMs?: number;
+            /** Format: int32 */
+            timeoutSeconds?: number | null;
+            /** Format: int32 */
+            priority?: number;
         };
         SubmitAnalysisRequest: {
             /** Format: uuid */
@@ -1095,6 +1179,7 @@ export interface components {
             rule: components["schemas"]["RuleView"];
             occurrences: components["schemas"]["FindingOccurrenceView"][];
             history: components["schemas"]["StatusChange"][];
+            reproductions: components["schemas"]["ReproductionView"][];
         };
         FindingOccurrenceView: {
             /** Format: uuid */
@@ -1137,6 +1222,8 @@ export interface components {
             confidence: string;
             /** @enum {string} */
             status: "OPEN" | "CONFIRMED" | "FALSE_POSITIVE" | "ACCEPTED_RISK" | "FIXED" | "REOPENED";
+            /** @enum {string} */
+            source: "STATIC_ANALYSIS" | "FUZZING";
             evidenceLevel: string;
             message: string;
             path: string;
@@ -1158,6 +1245,33 @@ export interface components {
             resolvedAt?: string | null;
             /** Format: int64 */
             version: number;
+        };
+        ReproductionView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            findingId: string;
+            /** Format: uuid */
+            jobId: string;
+            /** Format: uuid */
+            snapshotId: string;
+            path: string;
+            exportName: string;
+            oracle: string;
+            message: string;
+            errorName?: string | null;
+            stack?: string | null;
+            input?: null;
+            originalInput?: null;
+            /** Format: int32 */
+            shrinkSteps: number;
+            /** Format: int32 */
+            attempts: number;
+            /** Format: int32 */
+            reproduced: number;
+            reproductionTest: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         RuleView: {
             id: string;
@@ -1287,6 +1401,56 @@ export interface components {
         /** @description A page of results */
         PageProject: {
             items: components["schemas"]["Project"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        FuzzCampaignSummary: {
+            job: components["schemas"]["Job"];
+            campaign: components["schemas"]["FuzzCampaignView"] | null;
+        };
+        FuzzCampaignView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            jobId: string;
+            /** Format: uuid */
+            projectId: string;
+            /** Format: uuid */
+            snapshotId: string;
+            engineId: string;
+            engineVersion: string;
+            /** Format: int64 */
+            seed: number;
+            /** Format: int32 */
+            iterationsPerTarget: number;
+            /** Format: int32 */
+            callTimeoutMs: number;
+            /** Format: int32 */
+            corpusEntries: number;
+            /** Format: int32 */
+            targetsTested: number;
+            /** Format: int32 */
+            targetsSkipped: number;
+            /** Format: int64 */
+            totalCalls: number;
+            /** Format: int32 */
+            failures: number;
+            /** Format: int64 */
+            durationMs: number;
+            oracles: {
+                [key: string]: unknown;
+            }[];
+            limitations: string[];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @description A page of results */
+        PageFuzzCampaignSummary: {
+            items: components["schemas"]["FuzzCampaignSummary"][];
             /** Format: int32 */
             page: number;
             /** Format: int32 */
@@ -1472,6 +1636,7 @@ export interface components {
             /** Format: uuid */
             projectId: string;
             projectName: string;
+            jobType: string;
             state: string;
             /** Format: date-time */
             createdAt: string;
@@ -1665,6 +1830,32 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        FuzzCampaignDetail: {
+            job: components["schemas"]["Job"];
+            attempts: components["schemas"]["JobAttempt"][];
+            campaign: components["schemas"]["FuzzCampaignView"] | null;
+            targets: components["schemas"]["FuzzTargetView"][];
+            reproductions: components["schemas"]["ReproductionView"][];
+        };
+        FuzzTargetView: {
+            path: string;
+            exportName: string;
+            /** Format: int32 */
+            line: number;
+            signature?: string | null;
+            status: string;
+            skipReason?: string | null;
+            /** Format: int32 */
+            iterations: number;
+            /** Format: int32 */
+            replayed: number;
+            /** Format: int32 */
+            rejectedInputs: number;
+            /** Format: int32 */
+            failures: number;
+            /** Format: int64 */
+            durationMs: number;
+        };
         AuthConfigResponse: {
             devLoginEnabled: boolean;
             oidcIssuer?: string | null;
@@ -1848,7 +2039,60 @@ export interface operations {
             };
         };
     };
+    list_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageFuzzCampaignSummary"];
+                };
+            };
+        };
+    };
     submit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubmitFuzzCampaignRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    submit_1: {
         parameters: {
             query?: never;
             header?: {
@@ -2565,6 +2809,7 @@ export interface operations {
                 ruleId?: string;
                 path?: string;
                 q?: string;
+                source?: "STATIC_ANALYSIS" | "FUZZING";
                 page?: number;
                 size?: number;
             };
@@ -2758,7 +3003,7 @@ export interface operations {
             };
         };
     };
-    list_1: {
+    list_2: {
         parameters: {
             query?: {
                 page?: number;
@@ -2850,13 +3095,13 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    list_3: {
         parameters: {
             query: {
                 organizationId: string;
                 projectId?: string;
                 state?: ("QUEUED" | "LEASED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "TIMED_OUT" | "CANCELLED" | "INFRA_ERROR")[];
-                type?: "TEST_EXECUTION" | "STATIC_ANALYSIS";
+                type?: "TEST_EXECUTION" | "STATIC_ANALYSIS" | "FUZZ_CAMPAIGN";
                 page?: number;
                 size?: number;
             };
@@ -3015,6 +3260,50 @@ export interface operations {
             };
         };
     };
+    get_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuzzCampaignDetail"];
+                };
+            };
+        };
+    };
+    artifacts_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobArtifact"][];
+                };
+            };
+        };
+    };
     finding: {
         parameters: {
             query?: never;
@@ -3057,7 +3346,7 @@ export interface operations {
             };
         };
     };
-    get_2: {
+    get_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -3104,7 +3393,7 @@ export interface operations {
             };
         };
     };
-    artifacts_1: {
+    artifacts_2: {
         parameters: {
             query?: never;
             header?: never;

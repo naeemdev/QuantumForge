@@ -14,14 +14,14 @@ import java.nio.file.Path
 import kotlin.test.assertEquals
 
 /**
- * The M1 and M2 acceptance flows with the container sandbox instead of the
+ * The M1, M2 and M3 acceptance flows with the container sandbox instead of the
  * development process sandbox. Needs Docker (QF_TEST_DOCKER=1) and a deployed
  * copy of the TypeScript adapter (QF_TEST_TS_ANALYZER, e.g. from `pnpm deploy`),
  * because a pnpm workspace's symlinked dependencies do not resolve inside a container.
  */
 class ContainerExecutionTest : IntegrationTest() {
     @Test
-    fun `test runs and analyses execute in containers`() {
+    fun `test runs, analyses and fuzz campaigns execute in containers`() {
         assumeTrue(System.getenv("QF_TEST_DOCKER") == "1", "QF_TEST_DOCKER not set")
         val analyzer = System.getenv("QF_TEST_TS_ANALYZER")?.let { Path.of(it) }
         assumeTrue(analyzer != null, "QF_TEST_TS_ANALYZER not set")
@@ -59,7 +59,17 @@ class ContainerExecutionTest : IntegrationTest() {
         worker.runOnce()
         val analysed = api.get("/api/v1/analyses/$analysis", token).json
         assertEquals("SUCCEEDED", analysed.path("job").path("state").text(), analysed.toString())
-        val rules = api.get("/api/v1/projects/$project/findings", token).json.path("items").elements().texts("ruleId").toSet()
+        val rules = api.get("/api/v1/projects/$project/findings?source=STATIC_ANALYSIS", token).json.path("items").elements().texts("ruleId").toSet()
         assertEquals(setOf("QF-TS-002", "QF-TS-004", "QF-TS-006", "QF-TS-007", "QF-TS-008"), rules)
+
+        // The fuzzer forks one child process per target; that must work as uid 65534 on a read-only root.
+        val campaign = api.post("/api/v1/projects/$project/fuzz-campaigns", token, mapOf("snapshotId" to snapshot, "iterationsPerTarget" to 100)).field("id")
+        worker.runOnce()
+        val fuzzed = api.get("/api/v1/fuzz-campaigns/$campaign", token).json
+        assertEquals("SUCCEEDED", fuzzed.path("job").path("state").text(), fuzzed.toString())
+        assertEquals(8, fuzzed.path("campaign").path("targetsTested").asInt())
+        val reproduction = fuzzed.path("reproductions").elements().single()
+        assertEquals("averageUnitPrice", reproduction.path("exportName").text())
+        assertEquals(3, reproduction.path("reproduced").asInt())
     }
 }

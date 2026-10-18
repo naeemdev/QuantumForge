@@ -84,8 +84,8 @@ scripts/e2e-stack.sh stop
 ```
 
 The specs in `tests/e2e/specs` drive the real UI: sign-in, onboarding, importing
-the seeded sample, a test run (6 of 18 failing), an analysis (5 findings), triage
-and code intelligence. Logs are in `build/e2e/`.
+the seeded sample, a test run (6 of 18 failing), an analysis (5 findings), triage,
+code intelligence, and a fuzz campaign that reproduces D6. Logs are in `build/e2e/`.
 
 ## Container sandbox tests
 
@@ -100,7 +100,18 @@ QF_TEST_DOCKER=1 QF_TEST_TS_ANALYZER=/tmp/ts-analyzer ./gradlew test
 
 They check the isolation properties directly (uid 65534, read-only root and
 source, no network, worker secrets absent, timeouts, runtime errors reported as
-infrastructure errors) and run the M1/M2 acceptance flows in containers.
+infrastructure errors) and run the M1, M2 and M3 acceptance flows in containers.
+
+## Fuzzing locally
+
+```bash
+pnpm --filter @quantumforge/lang-typescript fuzz --root benchmarks/bug-corpus/sample-commerce-api --out /tmp/fuzz.json
+# options: --seed N --iterations N --call-timeout-ms N --budget-ms N --corpus <file>
+```
+
+The fuzzer **executes** the code it is pointed at. Only run it on code you trust
+outside the worker sandbox. The adapter tests (`pnpm --filter @quantumforge/lang-typescript test`)
+include the fuzzer's own tests.
 
 ## Changing the API
 

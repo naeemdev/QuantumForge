@@ -29,11 +29,15 @@ function Verdict({ detail }: { detail: JobDetail }) {
   const tests = job.resultSummary?.tests as Record<string, number> | undefined;
   const analysis = job.resultSummary?.analysis as Record<string, number> | undefined;
   const text = (() => {
+    if (job.jobType === "FUZZ_CAMPAIGN" && job.state === "SUCCEEDED") {
+      const fuzz = job.resultSummary?.fuzz as Record<string, number> | undefined;
+      return `Fuzz campaign completed: ${fuzz?.targetsTested ?? 0} functions tested with ${fuzz?.totalCalls ?? 0} calls, ${fuzz?.failures ?? 0} failures. See the campaign page for minimal inputs and reproduction tests.`;
+    }
     if (job.jobType === "STATIC_ANALYSIS" && job.state === "SUCCEEDED") {
       return `Analysis completed: ${analysis?.symbols ?? 0} symbols indexed, ${analysis?.findings ?? 0} findings detected (${analysis?.newFindings ?? 0} new, ${analysis?.reopened ?? 0} reopened, ${analysis?.fixed ?? 0} no longer detected). Findings are suspected issues from pattern rules, not reproduced defects.`;
     }
-    if (job.jobType === "STATIC_ANALYSIS" && job.state === "FAILED") {
-      return `The analysis did not complete: ${job.failureReason ?? "see logs"}.`;
+    if (job.jobType !== "TEST_EXECUTION" && job.state === "FAILED") {
+      return `The ${job.jobType === "FUZZ_CAMPAIGN" ? "campaign" : "analysis"} did not complete: ${job.failureReason ?? "see logs"}.`;
     }
     switch (job.state) {
       case "SUCCEEDED":
@@ -52,7 +56,7 @@ function Verdict({ detail }: { detail: JobDetail }) {
         return "The run has not finished yet.";
     }
   })();
-  const tone = job.jobType === "STATIC_ANALYSIS" && job.state === "SUCCEEDED" ? "border-border bg-surface-2" : job.state === "SUCCEEDED" ? "border-success/30 bg-success-soft" : job.state === "FAILED" ? "border-danger/30 bg-danger-soft" : "border-border bg-surface-2";
+  const tone = job.jobType !== "TEST_EXECUTION" && job.state === "SUCCEEDED" ? "border-border bg-surface-2" : job.state === "SUCCEEDED" ? "border-success/30 bg-success-soft" : job.state === "FAILED" ? "border-danger/30 bg-danger-soft" : "border-border bg-surface-2";
   return <div className={cn("rounded-md border px-4 py-3 text-[13px] text-fg", tone)}>{text}</div>;
 }
 
@@ -345,18 +349,20 @@ export default function JobPage() {
   const cancel = useCancelJob(jobId);
 
   const terminal = detail.data ? TERMINAL_JOB_STATES.includes(detail.data.job.state) : false;
-  const isAnalysis = detail.data?.job.jobType === "STATIC_ANALYSIS";
+  const jobType = detail.data?.job.jobType;
+  const isAnalysis = jobType === "STATIC_ANALYSIS";
+  const isFuzz = jobType === "FUZZ_CAMPAIGN";
   const [chosenTab, setTab] = useState<Tab | null>(null);
-  const tab: Tab = chosenTab ?? (isAnalysis ? "findings" : "tests");
+  const tab: Tab = chosenTab ?? (isAnalysis ? "findings" : isFuzz ? "logs" : "tests");
   const tabs = useMemo(
     () => [
-      isAnalysis ? { id: "findings" as const, label: "Findings" } : { id: "tests" as const, label: "Tests" },
+      ...(isAnalysis ? [{ id: "findings" as const, label: "Findings" }] : isFuzz ? [] : [{ id: "tests" as const, label: "Tests" }]),
       { id: "logs" as const, label: "Logs" },
       { id: "environment" as const, label: "Environment" },
       { id: "timeline" as const, label: "Timeline" },
       { id: "artifacts" as const, label: `Artifacts${artifacts.data ? ` (${artifacts.data.length})` : ""}` },
     ],
-    [artifacts.data, isAnalysis],
+    [artifacts.data, isAnalysis, isFuzz],
   );
 
   if (detail.isPending) return <Spinner />;
@@ -367,11 +373,12 @@ export default function JobPage() {
     <>
       <PageHeader
         breadcrumbs={[
-          isAnalysis ? { label: "Code Intelligence", href: `/code-intelligence?project=${job.projectId}` } : { label: "Test runs", href: "/test-runs" },
+          isAnalysis ? { label: "Code Intelligence", href: `/code-intelligence?project=${job.projectId}` }
+            : isFuzz ? { label: "Break My Code", href: `/break-my-code/${job.id}` } : { label: "Test runs", href: "/test-runs" },
           ...(project.data ? [{ label: project.data.name, href: `/projects/${job.projectId}` }] : []),
           { label: job.id.slice(-8) },
         ]}
-        title={<span className="flex items-center gap-3">{isAnalysis ? "Analysis" : "Test run"} <span className="font-mono text-base text-fg-2">{job.id.slice(-8)}</span> <JobStateBadge state={job.state} /></span>}
+        title={<span className="flex items-center gap-3">{isAnalysis ? "Analysis" : isFuzz ? "Fuzz campaign" : "Test run"} <span className="font-mono text-base text-fg-2">{job.id.slice(-8)}</span> <JobStateBadge state={job.state} jobType={job.jobType} /></span>}
         actions={!terminal && can("job.cancel") && (
           <Button variant="danger" onClick={() => cancel.mutate()} loading={cancel.isPending} disabled={job.cancelRequested}>
             <X className="size-4" /> {job.cancelRequested ? "Cancelling…" : "Cancel run"}
@@ -387,7 +394,7 @@ export default function JobPage() {
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px] md:grid-cols-4">
               {[
                 ["Snapshot", <Link key="s" href={`/projects/${job.projectId}/source?snapshot=${job.snapshotId}`} className="font-mono text-xs hover:underline">{job.snapshotId.slice(-12)}</Link>],
-                ["Runner", job.config.preset === "NODE_TEST" ? "node:test" : job.config.preset === "TS_ANALYSIS" ? "TypeScript adapter" : job.config.preset],
+                ["Runner", job.config.preset === "NODE_TEST" ? "node:test" : job.config.preset === "TS_ANALYSIS" ? "TypeScript adapter" : job.config.preset === "TS_FUZZ" ? "TypeScript fuzzer" : job.config.preset],
                 ["Queued", formatRelative(job.queuedAt)],
                 ["Duration", formatDuration(job.resultSummary?.durationMs as number | undefined)],
                 ["Attempts", `${job.attemptCount} of ${job.maxAttempts}`],
